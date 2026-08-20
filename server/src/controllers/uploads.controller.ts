@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { requireAuth } from '../middleware/auth';
 import { badRequest } from '../utils/errors';
 import { storeFile } from '../utils/storage';
-import { IMAGE_MAX_BYTES, sniffImage } from '../utils/upload-security';
+import { sniffImage } from '../utils/upload-security';
 
 export class UploadsController {
   static readonly routePrefix = '/uploads';
@@ -29,10 +29,6 @@ export class UploadsController {
 
     if (!fileBuffer) {
       throw badRequest('No file uploaded');
-    }
-
-    if (fileBuffer.length > IMAGE_MAX_BYTES) {
-      throw badRequest('Image must be 5MB or smaller');
     }
 
     const sniffed = sniffImage(fileBuffer);

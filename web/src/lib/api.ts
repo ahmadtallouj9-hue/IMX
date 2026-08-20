@@ -128,10 +128,10 @@ export const api = {
       `/conversations/${conversationId}/messages?${qs}`,
     );
   },
-  sendMessage: (conversationId: string, body: string, clientMessageId: string) =>
+  sendMessage: (conversationId: string, body: string, clientMessageId: string, attachments?: Array<{ url: string; kind: string; fileName?: string }>) =>
     request<{ message: ChatMessage }>(`/conversations/${conversationId}/messages`, {
       method: 'POST',
-      body: JSON.stringify({ body, clientMessageId }),
+      body: JSON.stringify({ body, clientMessageId, attachments }),
     }),
   updatePrefs: (id: string, prefs: { muted?: boolean; theme?: string; backgroundUrl?: string | null }) =>
     request<{ prefs: { muted: boolean; theme: string; backgroundUrl: string | null } }>(`/conversations/${id}/prefs`, {

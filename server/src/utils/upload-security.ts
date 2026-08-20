@@ -1,6 +1,5 @@
 import { badRequest } from './errors';
 
-export const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 const AVATAR_PATH = /^\/uploads\/[A-Za-z0-9._-]+\.(jpg|jpeg|png|gif|webp)$/i;
 const FILE_NAME = /^[A-Za-z0-9._-]+\.(jpg|jpeg|png|gif|webp)$/i;
 

@@ -24,7 +24,7 @@ const envSchema = z.object({
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60000),
   AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
   PASSWORD_MIN_LENGTH: z.coerce.number().int().positive().default(8),
-  MAX_UPLOAD_MB: z.coerce.number().positive().default(25),
+  MAX_UPLOAD_MB: z.coerce.number().positive().default(9999),
 });
 
 export type Env = z.infer<typeof envSchema>;

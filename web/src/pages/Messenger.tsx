@@ -44,10 +44,12 @@ export function Messenger() {
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [friendsOpen, setFriendsOpen] = useState(false);
+  const [imageBusy, setImageBusy] = useState(false);
 
   const scroller = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
   const typingTimer = useRef<number>();
+  const imageInput = useRef<HTMLInputElement>(null);
 
   const active = conversations.find((c) => c.id === conversationId) ?? null;
 
@@ -265,6 +267,40 @@ export function Messenger() {
     }
   }
 
+  async function sendImage(file: File) {
+    if (!conversationId) return;
+    setImageBusy(true);
+    setChatError(null);
+    try {
+      const uploaded = await api.upload(file);
+      const clientMessageId = newClientId();
+      const attachments = [{ url: toUploadPath(uploaded.url), kind: 'image', fileName: uploaded.fileName }];
+      const optimistic: ChatMessage = {
+        id: clientMessageId,
+        clientMessageId,
+        body: null,
+        type: 'IMAGE',
+        status: 'SENT',
+        sender: me,
+        conversationId,
+        createdAt: new Date().toISOString(),
+        readBy: [],
+        attachments: [{ id: clientMessageId, url: toUploadPath(uploaded.url), kind: 'image', fileName: uploaded.fileName }],
+      };
+      setMessages((curr) => [...curr, optimistic]);
+      stickToBottom.current = true;
+      const res = await api.sendMessage(conversationId, '', clientMessageId, attachments);
+      setMessages((curr) =>
+        curr.map((m) => (m.clientMessageId === clientMessageId ? { ...res.message, clientMessageId } : m)),
+      );
+      void loadConversations();
+    } catch (err) {
+      setChatError(err instanceof ApiError ? err.message : 'Image send failed');
+    } finally {
+      setImageBusy(false);
+    }
+  }
+
   function onDraft(value: string) {
     setDraft(value);
     if (!conversationId) return;
@@ -468,8 +504,11 @@ export function Messenger() {
                     <div className="stack">
                       {!mine && <span className="who">{group.sender.displayName}</span>}
                       {group.messages.map((message, index) => (
-                        <div key={message.id} className="bubble">
-                          <p>{message.body}</p>
+                        <div key={message.id} className={`bubble ${message.type === 'IMAGE' ? 'has-image' : ''}`}>
+                          {message.attachments?.filter(a => a.kind === 'image').map(a => (
+                            <MsgImage key={a.id} url={a.url} fileName={a.fileName} />
+                          ))}
+                          {message.body && <p>{message.body}</p>}
                           {index === group.messages.length - 1 && (
                             <span className="stamp">
                               {formatTime(message.createdAt)}
@@ -485,6 +524,26 @@ export function Messenger() {
               {typingNames.length > 0 && <div className="typing">{typingNames.join(', ')} typing…</div>}
             </div>
             <form className="composer" onSubmit={(e) => void send(e)}>
+              <input
+                ref={imageInput}
+                type="file"
+                accept="image/png,image/jpeg,image/gif,image/webp,image/*"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = '';
+                  if (file) void sendImage(file);
+                }}
+              />
+              <button
+                className="icon-btn"
+                type="button"
+                disabled={imageBusy}
+                aria-label="Send image"
+                onClick={() => imageInput.current?.click()}
+              >
+                {imageBusy ? '…' : '✎'}
+              </button>
               <input
                 value={draft}
                 onChange={(e) => onDraft(e.target.value)}
@@ -636,4 +695,11 @@ function Avatar({ user, online }: { user: PublicUser; online?: boolean }) {
       )}
     </span>
   );
+}
+
+function MsgImage({ url, fileName }: { url: string; fileName?: string | null }) {
+  const src = useMediaSrc(url);
+  const [broken, setBroken] = useState(false);
+  if (broken || !src) return null;
+  return <img className="msg-image" src={src} alt={fileName ?? 'image'} onError={() => setBroken(true)} />;
 }
