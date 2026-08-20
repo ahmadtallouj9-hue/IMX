@@ -30,7 +30,7 @@ export function ChatDetails({ conversation, meId, people, query, onQuery, onClos
   const canAdd = conversation.type === 'GROUP';
   const backgroundPreview = useMediaSrc(conversation.backgroundUrl);
 
-  async function savePrefs(prefs: { muted?: boolean; theme?: string; backgroundUrl?: string | null }) {
+  async function savePrefs(prefs: { muted?: boolean; pinned?: boolean; theme?: string; backgroundUrl?: string | null }) {
     setBusy(true);
     setError(null);
     try {

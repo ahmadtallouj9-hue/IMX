@@ -37,6 +37,20 @@ export function formatTime(iso: string): string {
   return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
+export function formatDayLabel(iso: string): string {
+  const date = new Date(iso);
+  const now = new Date();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (date.toDateString() === now.toDateString()) return 'Today';
+  if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+  return date.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+export function sameCalendarDay(a: string, b: string): boolean {
+  return new Date(a).toDateString() === new Date(b).toDateString();
+}
+
 export function newClientId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();

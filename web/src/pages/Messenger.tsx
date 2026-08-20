@@ -1,10 +1,10 @@
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState, type SVGProps } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, ApiError, getApiUrl, setApiUrl, toUploadPath } from '../lib/api';
 import { useMediaSrc } from '../lib/media';
 import { canInstall, isStandalone, promptInstall } from '../lib/install';
 import { useAuth } from '../lib/auth';
-import { formatTime, groupMessages, initials, newClientId, receiptLabel } from '../lib/messages';
+import { formatDayLabel, formatTime, groupMessages, initials, newClientId, receiptLabel, sameCalendarDay } from '../lib/messages';
 import { connectSocket, joinConversation } from '../lib/socket';
 import { EMOJIS } from '../lib/emojis';
 import type { ChatMessage, Conversation, PublicUser } from '../lib/types';
@@ -607,16 +607,16 @@ export function Messenger() {
             IMX
           </div>
           <button className="icon-btn" type="button" onClick={() => { setLightMode((v) => !v); }} aria-label="Toggle light mode" title="Toggle light mode">
-            {lightMode ? '🌙' : '☀️'}
+            {lightMode ? <IconMoon /> : <IconSun />}
           </button>
           <button className="icon-btn" type="button" onClick={() => { void (async () => { try { await Notification.requestPermission(); } catch { /* unsupported */ } })(); }} aria-label="Enable notifications" title="Enable notifications">
-            🔔
+            <IconBell />
           </button>
           <button className="icon-btn" type="button" onClick={() => setFriendsOpen(true)} aria-label="Friends">
-            ☺
+            <IconUsers />
           </button>
           <button className="icon-btn" type="button" onClick={() => setGroupOpen(true)} aria-label="New group">
-            +
+            <IconPlus />
           </button>
         </header>
         <div className="search-wrap">
@@ -645,7 +645,10 @@ export function Messenger() {
         <div className="conv-list">
           {listLoading && <div className="empty">Loading conversations…</div>}
           {!listLoading && filtered.length === 0 && people.length === 0 && (
-            <div className="empty">No conversations yet. Search for someone to start one.</div>
+            <div className="empty">
+              <div className="empty-icon" aria-hidden><IconChat /></div>
+              No conversations yet. Search for someone to start one.
+            </div>
           )}
           {filtered.map((conv) => {
             const name =
@@ -668,8 +671,8 @@ export function Messenger() {
                 </span>
                 <span className="meta">
                   <time>{formatTime(conv.lastMessageAt)}</time>
-                  {conv.pinned && <small>📌</small>}
-                  {conv.muted ? <small>Muted</small> : conv.unreadCount > 0 && <em>{conv.unreadCount}</em>}
+                  {conv.pinned && <span className="pin" title="Pinned" aria-label="Pinned"><IconPin /></span>}
+                  {conv.muted ? <small className="muted-tag">Muted</small> : conv.unreadCount > 0 && <em>{conv.unreadCount}</em>}
                 </span>
               </button>
             );
@@ -687,6 +690,7 @@ export function Messenger() {
       <main className="main" data-theme={active?.theme ?? 'chatter'}>
         {!conversationId && (
           <div className="empty center">
+            <div className="empty-icon" aria-hidden><IconChat /></div>
             <h2>Pick a conversation</h2>
             <p>Search for a person or open a thread from the left.</p>
           </div>
@@ -695,7 +699,7 @@ export function Messenger() {
           <>
             <header className="chat-head">
               <button className="icon-btn back" type="button" onClick={() => navigate('/')} aria-label="Back">
-                ←
+                <IconBack />
               </button>
               <button className="row plain" type="button" onClick={() => (peer ? setViewedUser(peer) : setDetailsOpen(true))}>
                 <Avatar user={peer ?? { id: conversationId, username: title, displayName: title, avatarUrl: active?.imageUrl }} online={peerOnline} />
@@ -713,7 +717,7 @@ export function Messenger() {
                 </span>
               </button>
               <button className="icon-btn" type="button" onClick={() => setDetailsOpen(true)} aria-label="Chat settings">
-                ⋯
+                <IconMore />
               </button>
             </header>
             <div
@@ -729,11 +733,23 @@ export function Messenger() {
                   {loadingOlder ? 'Loading…' : 'Load older messages'}
                 </button>
               )}
-              {!chatLoading && messages.length === 0 && <div className="empty">Say hello — this thread is empty.</div>}
-              {groups.map((group) => {
+              {!chatLoading && messages.length === 0 && (
+                <div className="empty">
+                  <div className="empty-icon" aria-hidden><IconChat /></div>
+                  Say hello — this thread is empty.
+                </div>
+              )}
+              {groups.map((group, groupIndex) => {
                 const mine = group.senderId === me.id;
+                const firstAt = group.messages[0].createdAt;
+                const prevAt = groupIndex > 0 ? groups[groupIndex - 1].messages[0].createdAt : null;
+                const showDay = !prevAt || !sameCalendarDay(prevAt, firstAt);
                 return (
-                  <div key={group.messages[0].id} className={`bundle ${mine ? 'mine' : ''}`}>
+                  <div key={group.messages[0].id}>
+                    {showDay && (
+                      <div className="day-sep"><span>{formatDayLabel(firstAt)}</span></div>
+                    )}
+                  <div className={`bundle ${mine ? 'mine' : ''}`}>
                     {!mine && <Avatar user={group.sender} />}
                     <div className="stack">
                       {!mine && <span className="who">{group.sender.displayName}</span>}
@@ -749,14 +765,14 @@ export function Messenger() {
                             </button>
                           )}
                           <div className="msg-actions">
-                            <button type="button" title="Reply" onClick={() => setReplyTo(message)}>↩</button>
+                            <button type="button" title="Reply" aria-label="Reply" onClick={() => setReplyTo(message)}><IconReply /></button>
                             {message.sender.id === me.id && !isDeleted && message.body && (
                               <>
-                                <button type="button" title="Edit" onClick={() => { setEditingId(message.id); setDraft(message.body ?? ''); }}>✎</button>
-                                <button type="button" title="Delete" onClick={() => void api.deleteMessage(conversationId!, message.id).then(() => setMessages((curr) => curr.map((m) => (m.id === message.id ? { ...m, body: null } : m))))}>🗑</button>
+                                <button type="button" title="Edit" aria-label="Edit" onClick={() => { setEditingId(message.id); setDraft(message.body ?? ''); }}><IconEdit /></button>
+                                <button type="button" className="danger" title="Delete" aria-label="Delete" onClick={() => void api.deleteMessage(conversationId!, message.id).then(() => setMessages((curr) => curr.map((m) => (m.id === message.id ? { ...m, body: null } : m))))}><IconTrash /></button>
                               </>
                             )}
-                            <button type="button" title="Forward" onClick={() => setForwardMsg(message)}>→</button>
+                            <button type="button" title="Forward" aria-label="Forward" onClick={() => setForwardMsg(message)}><IconForward /></button>
                           </div>
                           {isDeleted ? (
                             <p className="deleted">This message was deleted</p>
@@ -786,9 +802,15 @@ export function Messenger() {
                       })}
                     </div>
                   </div>
+                  </div>
                 );
               })}
-              {typingNames.length > 0 && <div className="typing">{typingNames.join(', ')} typing…</div>}
+              {typingNames.length > 0 && (
+                <div className="typing">
+                  <span className="typing-dots" aria-hidden><i /><i /><i /></span>
+                  {typingNames.join(', ')} typing…
+                </div>
+              )}
             </div>
             {emojiOpen && (
               <div className="emoji-grid">
@@ -827,7 +849,7 @@ export function Messenger() {
                   <small>No matches</small>
                 )}
                 <button className="icon-btn" type="button" aria-label="Close search" onClick={() => { setSearchOpen(false); setSearchResults([]); setSearchQuery(''); }}>
-                  ✕
+                  <IconClose />
                 </button>
               </div>
             )}
@@ -841,7 +863,7 @@ export function Messenger() {
                   </span>
                 )}
                 <button className="icon-btn" type="button" aria-label="Cancel" onClick={() => { setReplyTo(null); setEditingId(null); if (editingId) setDraft(''); }}>
-                  ✕
+                  <IconClose />
                 </button>
               </div>
             )}
@@ -852,7 +874,7 @@ export function Messenger() {
                 aria-label="Search messages"
                 onClick={() => setSearchOpen((o) => !o)}
               >
-                🔍
+                <IconSearch />
               </button>
               <input
                 ref={imageInput}
@@ -866,12 +888,12 @@ export function Messenger() {
                 }}
               />
               <button
-                className="icon-btn"
+                className={`icon-btn ${emojiOpen ? 'active' : ''}`}
                 type="button"
                 aria-label="Emoji"
                 onClick={() => setEmojiOpen((o) => !o)}
               >
-                😊
+                <IconEmoji />
               </button>
               <button
                 className="icon-btn"
@@ -880,7 +902,7 @@ export function Messenger() {
                 aria-label="Send photo"
                 onClick={() => imageInput.current?.click()}
               >
-                {imageBusy ? '…' : '📷'}
+                {imageBusy ? '…' : <IconImage />}
               </button>
               <input
                 ref={videoInput}
@@ -900,7 +922,7 @@ export function Messenger() {
                 aria-label="Send video"
                 onClick={() => videoInput.current?.click()}
               >
-                {imageBusy ? '…' : '🎬'}
+                {imageBusy ? '…' : <IconVideo />}
               </button>
               <button
                 className={`icon-btn ${recording ? 'recording' : ''}`}
@@ -908,7 +930,7 @@ export function Messenger() {
                 aria-label={recording ? 'Stop recording' : 'Record voice'}
                 onClick={() => recording ? stopRecording() : startRecording()}
               >
-                {recording ? '⏹' : '🎤'}
+                {recording ? <IconStop /> : <IconMic />}
               </button>
               <input
                 value={draft}
@@ -1101,7 +1123,7 @@ export function Messenger() {
             onDoubleClick={() => { setLightboxZoom(1); lightboxPos.current = { x: 0, y: 0 }; }}
           />
           <button className="lightbox-close" type="button" onClick={(e) => { e.stopPropagation(); setLightboxSrc(null); setLightboxZoom(1); lightboxPos.current = { x: 0, y: 0 }; }}>
-            ✕
+            <IconClose />
           </button>
           <div className="lightbox-hint">Scroll to zoom · Drag to pan · Double-click to reset</div>
         </div>
@@ -1130,14 +1152,20 @@ function Avatar({ user, online }: { user: PublicUser; online?: boolean }) {
 function MsgImage({ url, fileName, onOpen }: { url: string; fileName?: string | null; onOpen?: (src: string) => void }) {
   const src = useMediaSrc(url);
   const [broken, setBroken] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    setBroken(false);
+    setLoaded(false);
+  }, [src]);
   if (broken) return <div className="msg-image-fallback">Couldn't load image</div>;
   if (!src) return <div className="msg-image-fallback">Loading photo…</div>;
   return (
     <img
-      className="msg-image"
+      className={`msg-image ${loaded ? 'loaded' : 'loading'}`}
       src={src}
       alt={fileName ?? 'image'}
       loading="lazy"
+      onLoad={() => setLoaded(true)}
       onClick={() => onOpen?.(src)}
       onError={() => setBroken(true)}
     />
@@ -1157,5 +1185,165 @@ function MsgVideo({ url, fileName }: { url: string; fileName?: string | null }) 
     <video className="msg-video" src={src} controls preload="metadata" playsInline>
       <track kind="captions" />
     </video>
+  );
+}
+
+function iconProps(props?: SVGProps<SVGSVGElement>) {
+  return { viewBox: '0 0 24 24', 'aria-hidden': true as const, ...props };
+}
+
+function IconSun() {
+  return (
+    <svg {...iconProps()}>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+    </svg>
+  );
+}
+function IconMoon() {
+  return (
+    <svg {...iconProps()}>
+      <path d="M21 14.5A8.5 8.5 0 0 1 9.5 3 7 7 0 1 0 21 14.5z" />
+    </svg>
+  );
+}
+function IconBell() {
+  return (
+    <svg {...iconProps()}>
+      <path d="M6 9a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+      <path d="M10 21a2 2 0 0 0 4 0" />
+    </svg>
+  );
+}
+function IconUsers() {
+  return (
+    <svg {...iconProps()}>
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+function IconPlus() {
+  return (
+    <svg {...iconProps()}>
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+function IconBack() {
+  return (
+    <svg {...iconProps()}>
+      <path d="M15 18l-6-6 6-6" />
+    </svg>
+  );
+}
+function IconMore() {
+  return (
+    <svg {...iconProps()}>
+      <circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none" />
+      <circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+function IconSearch() {
+  return (
+    <svg {...iconProps()}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="M20 20l-3.5-3.5" />
+    </svg>
+  );
+}
+function IconEmoji() {
+  return (
+    <svg {...iconProps()}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01" />
+    </svg>
+  );
+}
+function IconImage() {
+  return (
+    <svg {...iconProps()}>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <circle cx="8.5" cy="10" r="1.5" />
+      <path d="M21 16l-5-5-8 8" />
+    </svg>
+  );
+}
+function IconVideo() {
+  return (
+    <svg {...iconProps()}>
+      <rect x="3" y="6" width="13" height="12" rx="2" />
+      <path d="M16 10l5-3v10l-5-3z" />
+    </svg>
+  );
+}
+function IconMic() {
+  return (
+    <svg {...iconProps()}>
+      <rect x="9" y="3" width="6" height="11" rx="3" />
+      <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+    </svg>
+  );
+}
+function IconStop() {
+  return (
+    <svg {...iconProps()}>
+      <rect x="7" y="7" width="10" height="10" rx="1.5" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+function IconClose() {
+  return (
+    <svg {...iconProps()}>
+      <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
+  );
+}
+function IconReply() {
+  return (
+    <svg {...iconProps()}>
+      <path d="M9 14L4 9l5-5" />
+      <path d="M20 20v-7a4 4 0 0 0-4-4H4" />
+    </svg>
+  );
+}
+function IconEdit() {
+  return (
+    <svg {...iconProps()}>
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+    </svg>
+  );
+}
+function IconTrash() {
+  return (
+    <svg {...iconProps()}>
+      <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
+    </svg>
+  );
+}
+function IconForward() {
+  return (
+    <svg {...iconProps()}>
+      <path d="M15 10l5-5-5-5" />
+      <path d="M4 20v-7a4 4 0 0 1 4-4h12" />
+    </svg>
+  );
+}
+function IconPin() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden>
+      <path d="M14 4l6 6-3 1-4 7-2-2 1-5-5-5zM6 18l-2 4" fill="currentColor" />
+    </svg>
+  );
+}
+function IconChat() {
+  return (
+    <svg {...iconProps()}>
+      <path d="M21 12a8 8 0 0 1-8 8H7l-4 3V12a8 8 0 1 1 18 0z" />
+    </svg>
   );
 }

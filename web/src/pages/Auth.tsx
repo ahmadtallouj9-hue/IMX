@@ -46,8 +46,8 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
           <span className="logo-mark" />
           IMX
         </div>
-        <h1>Welcome</h1>
-        <p>Real-time messaging for everyone.</p>
+        <h1>Messages that feel instant</h1>
+        <p>Real-time chat, friends, and private conversations — clean, fast, and ready wherever you are.</p>
       </div>
       <form className="auth-card" onSubmit={onSubmit}>
         <h2>{mode === 'login' ? 'Welcome back' : 'Create your space'}</h2>
