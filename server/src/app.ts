@@ -139,7 +139,9 @@ export function buildApp(): FastifyInstance {
   void app.register(registerRoutes);
 
   const uploadsDir = getUploadsDir();
-  mkdirSync(uploadsDir, { recursive: true });
+  if (env.STORAGE_DRIVER === 'local') {
+    mkdirSync(uploadsDir, { recursive: true });
+  }
 
   const webDist = [
     join(process.cwd(), 'web-dist'),
