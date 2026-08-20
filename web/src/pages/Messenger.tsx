@@ -308,8 +308,20 @@ export function Messenger() {
 
   function startRecording() {
     if (!conversationId) return;
+    if (!navigator.mediaDevices || !window.MediaRecorder) {
+      setChatError('Recording not supported in this browser');
+      return;
+    }
     navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
-      const mr = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'].find(
+        (t) => MediaRecorder.isTypeSupported(t),
+      );
+      if (!mimeType) {
+        stream.getTracks().forEach((t) => t.stop());
+        setChatError('No supported audio format found');
+        return;
+      }
+      const mr = new MediaRecorder(stream, { mimeType });
       chunks.current = [];
       mr.ondataavailable = (e) => { if (e.data.size > 0) chunks.current.push(e.data); };
       mr.onstop = () => {
@@ -319,8 +331,13 @@ export function Messenger() {
       mr.start();
       recorder.current = mr;
       setRecording(true);
-    }).catch(() => {
-      setChatError('Microphone access denied');
+    }).catch((err) => {
+      const msg = err?.name === 'NotAllowedError'
+        ? 'Microphone permission denied — allow it in browser settings'
+        : err?.name === 'NotFoundError'
+          ? 'No microphone found'
+          : `Mic error: ${err?.message ?? err}`;
+      setChatError(msg);
     });
   }
 
