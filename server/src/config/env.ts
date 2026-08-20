@@ -12,7 +12,7 @@ const envSchema = z.object({
   JWT_REFRESH_SECRET: z.string().min(16),
   JWT_ACCESS_EXPIRES_IN: z.string().default('15m'),
   JWT_REFRESH_EXPIRES_IN: z.string().default('30d'),
-  STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
+  STORAGE_DRIVER: z.enum(['local', 's3', 'db']).default('local'),
   STORAGE_LOCAL_DIR: z.string().default('./uploads'),
   STORAGE_PUBLIC_BASE_URL: z.string().default('http://localhost:8080'),
   S3_BUCKET: z.string().optional(),

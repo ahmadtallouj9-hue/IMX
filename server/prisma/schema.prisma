@@ -239,3 +239,18 @@ model Notification {
   @@index([userId, read])
   @@index([userId, createdAt])
 }
+
+// ---------------------------------------------------------------------------
+// File storage (stored in DB to survive ephemeral disks)
+// ---------------------------------------------------------------------------
+
+model StoredUpload {
+  id        String   @id @default(uuid())
+  fileName  String   @unique
+  mimeType  String
+  size      Int
+  data      Bytes
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}

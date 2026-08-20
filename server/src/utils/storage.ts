@@ -40,6 +40,9 @@ export async function storeFile(
   if (env.STORAGE_DRIVER === 's3') {
     return storeToS3(buffer, originalName, mimeType);
   }
+  if (env.STORAGE_DRIVER === 'db') {
+    return storeToDb(buffer, originalName, mimeType);
+  }
   return storeLocal(buffer, originalName, mimeType);
 }
 
@@ -123,5 +126,32 @@ export async function readStoredFile(fileName: string): Promise<Buffer | null> {
       return null;
     }
   }
+  if (env.STORAGE_DRIVER === 'db') {
+    return readFromDb(fileName);
+  }
   return null;
+}
+
+async function storeToDb(
+  buffer: Buffer,
+  originalName: string,
+  mimeType: string,
+): Promise<UploadResult> {
+  const fileName = generateFileName(originalName);
+  const { prisma } = await import('../database/prisma');
+  await prisma.storedUpload.create({
+    data: { fileName, mimeType, size: buffer.length, data: buffer },
+  });
+
+  const baseUrl = env.STORAGE_PUBLIC_BASE_URL.replace(/\/$/, '');
+  const path = `/uploads/${fileName}`;
+  const url = `${baseUrl}${path}`;
+
+  return { url, fileName, mimeType, size: buffer.length };
+}
+
+async function readFromDb(fileName: string): Promise<Buffer | null> {
+  const { prisma } = await import('../database/prisma');
+  const rec = await prisma.storedUpload.findUnique({ where: { fileName } });
+  return rec ? Buffer.from(rec.data) : null;
 }

@@ -240,11 +240,9 @@ export function buildApp(): FastifyInstance {
       return reply.send(createReadStream(filePath));
     }
 
-    if (env.STORAGE_DRIVER === 's3') {
-      const buf = await readStoredFile(safeName);
-      if (buf) {
-        return reply.send(buf);
-      }
+    const buf = await readStoredFile(safeName);
+    if (buf) {
+      return reply.send(buf);
     }
 
     return reply.code(404).send({ error: 'File not found' });
