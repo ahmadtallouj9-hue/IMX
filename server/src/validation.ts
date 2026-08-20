@@ -25,7 +25,7 @@ export const createConversationSchema = z.object({
 export const sendMessageSchema = z.object({
   body: z.string().max(4000).optional(),
   clientMessageId: z.string().min(1).max(80).optional(),
-  replyToId: z.string().min(1).max(64).optional(),
+  replyToId: z.string().min(1).max(64).nullable().optional(),
   attachments: z.array(z.object({
     url: z.string().min(1).max(500),
     kind: z.string().min(1).max(20),

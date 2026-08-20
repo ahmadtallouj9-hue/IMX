@@ -131,7 +131,7 @@ export const api = {
   sendMessage: (conversationId: string, body: string, clientMessageId: string, attachments?: Array<{ url: string; kind: string; fileName?: string }>, replyToId?: string | null) =>
     request<{ message: ChatMessage }>(`/conversations/${conversationId}/messages`, {
       method: 'POST',
-      body: JSON.stringify({ body, clientMessageId, attachments, replyToId }),
+      body: JSON.stringify({ body, clientMessageId, attachments, replyToId: replyToId ?? undefined }),
     }),
   editMessage: (conversationId: string, messageId: string, body: string) =>
     request<{ message: ChatMessage }>(`/conversations/${conversationId}/messages/${messageId}`, {
