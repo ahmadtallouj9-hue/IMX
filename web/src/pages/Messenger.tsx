@@ -57,6 +57,7 @@ export function Messenger() {
   const stickToBottom = useRef(true);
   const typingTimer = useRef<number>();
   const imageInput = useRef<HTMLInputElement>(null);
+  const videoInput = useRef<HTMLInputElement>(null);
   const recorder = useRef<MediaRecorder | null>(null);
   const chunks = useRef<Blob[]>([]);
 
@@ -305,6 +306,40 @@ export function Messenger() {
       void loadConversations();
     } catch (err) {
       setChatError(err instanceof ApiError ? err.message : 'Image send failed');
+    } finally {
+      setImageBusy(false);
+    }
+  }
+
+  async function sendVideo(file: File) {
+    if (!conversationId) return;
+    setImageBusy(true);
+    setChatError(null);
+    try {
+      const uploaded = await api.upload(file);
+      const clientMessageId = newClientId();
+      const attachments = [{ url: toUploadPath(uploaded.url), kind: 'video', fileName: uploaded.fileName, mimeType: uploaded.mimeType, size: uploaded.size }];
+      const optimistic: ChatMessage = {
+        id: clientMessageId,
+        clientMessageId,
+        body: null,
+        type: 'VIDEO',
+        status: 'SENT',
+        sender: me,
+        conversationId,
+        createdAt: new Date().toISOString(),
+        readBy: [],
+        attachments: [{ id: clientMessageId, url: toUploadPath(uploaded.url), kind: 'video', fileName: uploaded.fileName }],
+      };
+      setMessages((curr) => [...curr, optimistic]);
+      stickToBottom.current = true;
+      const res = await api.sendMessage(conversationId, '', clientMessageId, attachments);
+      setMessages((curr) =>
+        curr.map((m) => (m.clientMessageId === clientMessageId ? { ...res.message, clientMessageId } : m)),
+      );
+      void loadConversations();
+    } catch (err) {
+      setChatError(err instanceof ApiError ? err.message : 'Video send failed');
     } finally {
       setImageBusy(false);
     }
@@ -586,9 +621,12 @@ export function Messenger() {
                     <div className="stack">
                       {!mine && <span className="who">{group.sender.displayName}</span>}
                       {group.messages.map((message, index) => (
-                        <div key={message.id} className={`bubble ${message.type === 'IMAGE' ? 'has-image' : ''} ${message.type === 'AUDIO' ? 'has-audio' : ''}`}>
+                        <div key={message.id} className={`bubble ${message.type === 'IMAGE' ? 'has-image' : ''} ${message.type === 'AUDIO' ? 'has-audio' : ''} ${message.type === 'VIDEO' ? 'has-video' : ''}`}>
                           {message.attachments?.filter(a => a.kind.toLowerCase().includes('image')).map(a => (
                             <MsgImage key={a.id} url={a.url} fileName={a.fileName} onOpen={(s) => { setLightboxSrc(s); setLightboxZoom(1); lightboxPos.current = { x: 0, y: 0 }; }} />
+                          ))}
+                          {message.attachments?.filter(a => a.kind.toLowerCase().includes('video')).map(a => (
+                            <MsgVideo key={a.id} url={a.url} fileName={a.fileName} />
                           ))}
                           {message.attachments?.filter(a => a.kind.toLowerCase().includes('audio')).map(a => (
                             <MsgAudio key={a.id} url={a.url} />
@@ -645,6 +683,26 @@ export function Messenger() {
                 onClick={() => imageInput.current?.click()}
               >
                 {imageBusy ? '…' : '📷'}
+              </button>
+              <input
+                ref={videoInput}
+                type="file"
+                accept="video/mp4,video/quicktime,video/webm,video/x-matroska,video/x-msvideo,video/*"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = '';
+                  if (file) void sendVideo(file);
+                }}
+              />
+              <button
+                className="icon-btn"
+                type="button"
+                disabled={imageBusy}
+                aria-label="Send video"
+                onClick={() => videoInput.current?.click()}
+              >
+                {imageBusy ? '…' : '🎬'}
               </button>
               <button
                 className={`icon-btn ${recording ? 'recording' : ''}`}
@@ -864,4 +922,14 @@ function MsgAudio({ url }: { url: string }) {
   const src = useMediaSrc(url);
   if (!src) return <div className="msg-image-fallback">Loading audio…</div>;
   return <audio controls src={src} className="msg-audio" />;
+}
+
+function MsgVideo({ url, fileName }: { url: string; fileName?: string | null }) {
+  const src = useMediaSrc(url);
+  if (!src) return <div className="msg-image-fallback">Loading video…</div>;
+  return (
+    <video className="msg-video" src={src} controls preload="metadata" playsInline>
+      <track kind="captions" />
+    </video>
+  );
 }

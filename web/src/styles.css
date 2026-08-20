@@ -433,8 +433,17 @@ button { cursor: pointer; }
   border-radius: 12px;
 }
 
-.has-audio {
-  padding: 10px 14px;
+.msg-video {
+  display: block;
+  width: 100%;
+  max-width: 360px;
+  max-height: 420px;
+  border-radius: 16px;
+  background: #000;
+}
+
+.has-video {
+  padding: 6px;
 }
 .back { display: none; }
 

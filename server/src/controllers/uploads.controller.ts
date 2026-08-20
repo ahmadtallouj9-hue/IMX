@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { requireAuth } from '../middleware/auth';
 import { badRequest } from '../utils/errors';
 import { storeFile } from '../utils/storage';
-import { sniffImage, sniffAudio } from '../utils/upload-security';
+import { sniffImage, sniffAudio, sniffVideo } from '../utils/upload-security';
 
 export class UploadsController {
   static readonly routePrefix = '/uploads';
@@ -33,10 +33,11 @@ export class UploadsController {
 
     const sniffedImg = sniffImage(fileBuffer);
     const sniffedAudio = !sniffedImg ? sniffAudio(fileBuffer) : null;
-    const sniffed = sniffedImg ?? sniffedAudio;
+    const sniffedVideo = !sniffedImg && !sniffedAudio ? sniffVideo(fileBuffer) : null;
+    const sniffed = sniffedImg ?? sniffedAudio ?? sniffedVideo;
 
     if (!sniffed) {
-      throw badRequest('Only JPEG, PNG, GIF, WebP images or WebM/OGG/MP3/WAV audio are allowed');
+      throw badRequest('Only JPEG, PNG, GIF, WebP images, WebM/OGG/MP3/WAV audio, or MP4/MOV/MKV/AVI videos are allowed');
     }
 
     const result = await storeFile(fileBuffer, `upload${sniffed.ext}`, sniffed.mime);

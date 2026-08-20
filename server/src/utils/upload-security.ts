@@ -1,7 +1,7 @@
 import { badRequest } from './errors';
 
 const AVATAR_PATH = /^\/uploads\/[A-Za-z0-9._-]+\.(jpg|jpeg|png|gif|webp)$/i;
-const FILE_NAME = /^[A-Za-z0-9._-]+\.(jpg|jpeg|png|gif|webp|webm|ogg|mp3|wav|m4a)$/i;
+const FILE_NAME = /^[A-Za-z0-9._-]+\.(jpg|jpeg|png|gif|webp|webm|ogg|mp3|wav|m4a|mp4|mov|mkv|avi)$/i;
 
 export type SniffedImage = { mime: string; ext: string };
 
@@ -35,6 +35,29 @@ export function sniffAudio(buf: Buffer): SniffedImage | null {
   }
   if (buf.toString('ascii', 0, 4) === 'RIFF' && buf.length > 12 && buf.toString('ascii', 8, 12) === 'WAVE') {
     return { mime: 'audio/wav', ext: '.wav' };
+  }
+  return null;
+}
+
+export function sniffVideo(buf: Buffer): SniffedImage | null {
+  if (buf.length < 12) return null;
+  // MP4 / MOV / M4V — ISO BMFF "ftyp"
+  if (buf.toString('ascii', 4, 8) === 'ftyp') {
+    const brand = buf.toString('ascii', 8, 12);
+    if (/^(qt|mp4|M4V|isom|avc1|heic)/i.test(brand)) {
+      return { mime: 'video/mp4', ext: '.mp4' };
+    }
+    return { mime: 'video/mp4', ext: '.mp4' };
+  }
+  // WebM / MKV — EBML magic 1A 45 DF A3
+  if (buf[0] === 0x1a && buf[1] === 0x45 && buf[2] === 0xdf && buf[3] === 0xa3) {
+    const str = buf.toString('latin1', 0, Math.min(buf.length, 512));
+    if (str.includes('webm')) return { mime: 'video/webm', ext: '.webm' };
+    return { mime: 'video/x-matroska', ext: '.mkv' };
+  }
+  // AVI — RIFF....AVI
+  if (buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'AVI ') {
+    return { mime: 'video/x-msvideo', ext: '.avi' };
   }
   return null;
 }

@@ -14,6 +14,7 @@ export interface UploadResult {
 
 const AUDIO_EXTS = ['.webm', '.ogg', '.mp3', '.wav', '.m4a'];
 const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+const VIDEO_EXTS = ['.mp4', '.mov', '.mkv', '.avi'];
 
 export function getUploadsDir(): string {
   return resolve(process.cwd(), env.STORAGE_LOCAL_DIR);
@@ -28,7 +29,7 @@ function ensureDir(dir: string): void {
 function generateFileName(originalName: string): string {
   const raw = originalName.includes('.') ? '.' + originalName.split('.').pop() : '';
   const lower = raw.toLowerCase();
-  const ext = [...IMAGE_EXTS, ...AUDIO_EXTS].includes(lower) ? lower : '.bin';
+  const ext = [...IMAGE_EXTS, ...AUDIO_EXTS, ...VIDEO_EXTS].includes(lower) ? lower : '.bin';
   return `${Date.now()}-${randomBytes(16).toString('hex')}${ext}`;
 }
 

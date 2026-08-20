@@ -123,7 +123,10 @@ export class MessagesController {
     }
 
     const hasAttachments = attachments && attachments.length > 0;
-    const messageType = hasAttachments ? (attachments![0].kind === 'image' ? 'IMAGE' : 'FILE') : 'TEXT';
+    const kind = hasAttachments ? attachments![0].kind : null;
+    const messageType = hasAttachments
+      ? kind === 'image' ? 'IMAGE' : kind === 'video' ? 'VIDEO' : 'FILE'
+      : 'TEXT';
 
     const message = await prisma.message.create({
       data: {

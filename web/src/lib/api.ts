@@ -149,7 +149,7 @@ export const api = {
   upload: async (file: File) => {
     const form = new FormData();
     form.append('file', file);
-    return request<{ url: string; fileName: string }>('/uploads', { method: 'POST', body: form });
+    return request<{ url: string; fileName: string; mimeType: string; size: number }>('/uploads', { method: 'POST', body: form });
   },
   friends: () => request<{ friends: PublicUser[] }>('/friends'),
   friendRequests: () => request<{ received: Array<{ id: string; user: PublicUser; createdAt: string }>; sent: Array<{ id: string; user: PublicUser; createdAt: string }> }>('/friends/requests'),
@@ -162,7 +162,7 @@ export const api = {
   markNotificationsRead: () => request<{ success: boolean }>('/notifications/read-all', { method: 'POST' }),
 };
 
-const SAFE_UPLOAD = /^\/uploads\/[A-Za-z0-9._-]+\.(jpg|jpeg|png|gif|webp|webm|ogg|mp3|wav|m4a)$/i;
+const SAFE_UPLOAD = /^\/uploads\/[A-Za-z0-9._-]+\.(jpg|jpeg|png|gif|webp|webm|ogg|mp3|wav|m4a|mp4|mov|mkv|avi)$/i;
 
 export function toUploadPath(url: string): string {
   const index = url.indexOf('/uploads/');

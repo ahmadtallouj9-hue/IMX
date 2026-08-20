@@ -218,11 +218,15 @@ export function buildApp(): FastifyInstance {
     '.png': 'image/png',
     '.gif': 'image/gif',
     '.webp': 'image/webp',
-    '.webm': 'audio/webm',
+    '.webm': 'video/webm',
     '.ogg': 'audio/ogg',
     '.mp3': 'audio/mpeg',
     '.wav': 'audio/wav',
     '.m4a': 'audio/mp4',
+    '.mp4': 'video/mp4',
+    '.mov': 'video/quicktime',
+    '.mkv': 'video/x-matroska',
+    '.avi': 'video/x-msvideo',
   };
 
   app.get('/uploads/:filename', async (req, reply) => {
