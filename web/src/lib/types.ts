@@ -39,7 +39,7 @@ export type ChatMessage = {
   createdAt: string;
   updatedAt?: string;
   readBy: Array<{ userId: string; readAt: string }>;
-  attachments?: Array<{ id: string; url: string; kind: string; fileName?: string | null }>;
+  attachments?: Array<{ id: string; url: string; kind: string; fileName?: string | null; mimeType?: string | null }>;
 };
 
 export type MessageGroup = {

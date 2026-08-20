@@ -34,6 +34,8 @@ client/macos/flutter/ephemeral/
 # ---- IDE / misc ----
 .vscode/
 .idea/
+.claude/
+.claude-flow/
 
 # ---- Local toolchain (large SDK downloads) ----
 tools/

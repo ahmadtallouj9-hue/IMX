@@ -1,5 +1,5 @@
 import { createWriteStream, mkdirSync, existsSync } from 'fs';
-import { join } from 'path';
+import { join, resolve } from 'path';
 import { randomBytes } from 'crypto';
 import { env } from '../config';
 import { logger } from './logger';
@@ -11,6 +11,13 @@ export interface UploadResult {
   size: number;
 }
 
+const AUDIO_EXTS = ['.webm', '.ogg', '.mp3', '.wav', '.m4a'];
+const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+
+export function getUploadsDir(): string {
+  return resolve(process.cwd(), env.STORAGE_LOCAL_DIR);
+}
+
 function ensureDir(dir: string): void {
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
@@ -19,9 +26,8 @@ function ensureDir(dir: string): void {
 
 function generateFileName(originalName: string): string {
   const raw = originalName.includes('.') ? '.' + originalName.split('.').pop() : '';
-  const ext = ['.jpg', '.jpeg', '.png', '.gif', '.webp'].includes(raw.toLowerCase())
-    ? raw.toLowerCase()
-    : '.bin';
+  const lower = raw.toLowerCase();
+  const ext = [...IMAGE_EXTS, ...AUDIO_EXTS].includes(lower) ? lower : '.bin';
   return `${Date.now()}-${randomBytes(16).toString('hex')}${ext}`;
 }
 
@@ -41,16 +47,16 @@ async function storeLocal(
   originalName: string,
   mimeType: string,
 ): Promise<UploadResult> {
-  const uploadsDir = join(process.cwd(), env.STORAGE_LOCAL_DIR);
+  const uploadsDir = getUploadsDir();
   ensureDir(uploadsDir);
 
   const fileName = generateFileName(originalName);
   const filePath = join(uploadsDir, fileName);
 
-  await new Promise<void>((resolve, reject) => {
+  await new Promise<void>((resolveWrite, reject) => {
     const ws = createWriteStream(filePath);
     ws.on('error', reject);
-    ws.on('finish', resolve);
+    ws.on('finish', resolveWrite);
     ws.end(buffer);
   });
 

@@ -93,9 +93,31 @@ export class MessagesController {
     if (!membership) throw forbidden('Not a member of this conversation');
 
     if (clientMessageId) {
-      const existing = await prisma.message.findUnique({ where: { clientMessageId } });
+      const existing = await prisma.message.findUnique({
+        where: { clientMessageId },
+        include: {
+          sender: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
+          attachments: { select: { id: true, kind: true, url: true, mimeType: true, size: true, fileName: true, width: true, height: true } },
+          readBy: { select: { userId: true, readAt: true } },
+        },
+      });
       if (existing) {
-        reply.send({ message: existing });
+        reply.send({
+          message: {
+            id: existing.id,
+            clientMessageId: existing.clientMessageId,
+            body: existing.body,
+            type: existing.type,
+            status: existing.status,
+            sender: existing.sender,
+            replyToId: existing.replyToId,
+            conversationId,
+            createdAt: existing.createdAt.toISOString(),
+            updatedAt: existing.updatedAt.toISOString(),
+            readBy: existing.readBy.map((r) => ({ userId: r.userId, readAt: r.readAt.toISOString() })),
+            attachments: existing.attachments,
+          },
+        });
         return;
       }
     }

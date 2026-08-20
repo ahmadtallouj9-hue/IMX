@@ -1,7 +1,7 @@
 import { badRequest } from './errors';
 
 const AVATAR_PATH = /^\/uploads\/[A-Za-z0-9._-]+\.(jpg|jpeg|png|gif|webp)$/i;
-const FILE_NAME = /^[A-Za-z0-9._-]+\.(jpg|jpeg|png|gif|webp)$/i;
+const FILE_NAME = /^[A-Za-z0-9._-]+\.(jpg|jpeg|png|gif|webp|webm|ogg|mp3|wav|m4a)$/i;
 
 export type SniffedImage = { mime: string; ext: string };
 
@@ -18,6 +18,23 @@ export function sniffImage(buf: Buffer): SniffedImage | null {
   }
   if (buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP') {
     return { mime: 'image/webp', ext: '.webp' };
+  }
+  return null;
+}
+
+export function sniffAudio(buf: Buffer): SniffedImage | null {
+  if (buf.length < 4) return null;
+  if (buf.toString('ascii', 0, 4) === 'RIFF' && buf.length > 12 && buf.toString('ascii', 8, 12) === 'WEBP') {
+    return { mime: 'audio/webm', ext: '.webm' };
+  }
+  if (buf.toString('ascii', 0, 4) === 'OggS') {
+    return { mime: 'audio/ogg', ext: '.ogg' };
+  }
+  if (buf.toString('ascii', 0, 3) === 'ID3' || (buf[0] === 0xff && (buf[1] & 0xe0) === 0xe0)) {
+    return { mime: 'audio/mpeg', ext: '.mp3' };
+  }
+  if (buf.toString('ascii', 0, 4) === 'RIFF' && buf.length > 12 && buf.toString('ascii', 8, 12) === 'WAVE') {
+    return { mime: 'audio/wav', ext: '.wav' };
   }
   return null;
 }

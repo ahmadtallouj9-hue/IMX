@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { requireAuth } from '../middleware/auth';
 import { badRequest } from '../utils/errors';
 import { storeFile } from '../utils/storage';
-import { sniffImage } from '../utils/upload-security';
+import { sniffImage, sniffAudio } from '../utils/upload-security';
 
 export class UploadsController {
   static readonly routePrefix = '/uploads';
@@ -31,12 +31,15 @@ export class UploadsController {
       throw badRequest('No file uploaded');
     }
 
-    const sniffed = sniffImage(fileBuffer);
+    const sniffedImg = sniffImage(fileBuffer);
+    const sniffedAudio = !sniffedImg ? sniffAudio(fileBuffer) : null;
+    const sniffed = sniffedImg ?? sniffedAudio;
+
     if (!sniffed) {
-      throw badRequest('Only JPEG, PNG, GIF, or WebP images are allowed');
+      throw badRequest('Only JPEG, PNG, GIF, WebP images or WebM/OGG/MP3/WAV audio are allowed');
     }
 
-    const result = await storeFile(fileBuffer, `photo${sniffed.ext}`, sniffed.mime);
+    const result = await storeFile(fileBuffer, `upload${sniffed.ext}`, sniffed.mime);
 
     reply.status(201).send({
       url: result.url,

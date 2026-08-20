@@ -6,6 +6,7 @@ import { canInstall, isStandalone, promptInstall } from '../lib/install';
 import { useAuth } from '../lib/auth';
 import { formatTime, groupMessages, initials, newClientId, receiptLabel } from '../lib/messages';
 import { connectSocket, joinConversation } from '../lib/socket';
+import { EMOJIS } from '../lib/emojis';
 import type { ChatMessage, Conversation, PublicUser } from '../lib/types';
 import { ChatDetails } from './ChatDetails';
 import { FriendsPanel } from './FriendsPanel';
@@ -45,11 +46,15 @@ export function Messenger() {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [friendsOpen, setFriendsOpen] = useState(false);
   const [imageBusy, setImageBusy] = useState(false);
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const [recording, setRecording] = useState(false);
 
   const scroller = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
   const typingTimer = useRef<number>();
   const imageInput = useRef<HTMLInputElement>(null);
+  const recorder = useRef<MediaRecorder | null>(null);
+  const chunks = useRef<Blob[]>([]);
 
   const active = conversations.find((c) => c.id === conversationId) ?? null;
 
@@ -301,6 +306,62 @@ export function Messenger() {
     }
   }
 
+  function startRecording() {
+    if (!conversationId) return;
+    navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+      const mr = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      chunks.current = [];
+      mr.ondataavailable = (e) => { if (e.data.size > 0) chunks.current.push(e.data); };
+      mr.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        void sendVoice();
+      };
+      mr.start();
+      recorder.current = mr;
+      setRecording(true);
+    }).catch(() => {
+      setChatError('Microphone access denied');
+    });
+  }
+
+  function stopRecording() {
+    recorder.current?.stop();
+    setRecording(false);
+  }
+
+  async function sendVoice() {
+    if (!conversationId || chunks.current.length === 0) return;
+    setChatError(null);
+    try {
+      const blob = new Blob(chunks.current, { type: 'audio/webm' });
+      const file = new File([blob], 'voice.webm', { type: 'audio/webm' });
+      const uploaded = await api.upload(file);
+      const clientMessageId = newClientId();
+      const attachments = [{ url: toUploadPath(uploaded.url), kind: 'audio', fileName: uploaded.fileName }];
+      const optimistic: ChatMessage = {
+        id: clientMessageId,
+        clientMessageId,
+        body: null,
+        type: 'AUDIO',
+        status: 'SENT',
+        sender: me,
+        conversationId,
+        createdAt: new Date().toISOString(),
+        readBy: [],
+        attachments: [{ id: clientMessageId, url: toUploadPath(uploaded.url), kind: 'audio', fileName: uploaded.fileName }],
+      };
+      setMessages((curr) => [...curr, optimistic]);
+      stickToBottom.current = true;
+      const res = await api.sendMessage(conversationId, '', clientMessageId, attachments);
+      setMessages((curr) =>
+        curr.map((m) => (m.clientMessageId === clientMessageId ? { ...res.message, clientMessageId } : m)),
+      );
+      void loadConversations();
+    } catch (err) {
+      setChatError(err instanceof ApiError ? err.message : 'Voice send failed');
+    }
+  }
+
   function onDraft(value: string) {
     setDraft(value);
     if (!conversationId) return;
@@ -504,9 +565,12 @@ export function Messenger() {
                     <div className="stack">
                       {!mine && <span className="who">{group.sender.displayName}</span>}
                       {group.messages.map((message, index) => (
-                        <div key={message.id} className={`bubble ${message.type === 'IMAGE' ? 'has-image' : ''}`}>
-                          {message.attachments?.filter(a => a.kind === 'image').map(a => (
+                        <div key={message.id} className={`bubble ${message.type === 'IMAGE' ? 'has-image' : ''} ${message.type === 'AUDIO' ? 'has-audio' : ''}`}>
+                          {message.attachments?.filter(a => a.kind.toLowerCase().includes('image')).map(a => (
                             <MsgImage key={a.id} url={a.url} fileName={a.fileName} />
+                          ))}
+                          {message.attachments?.filter(a => a.kind.toLowerCase().includes('audio')).map(a => (
+                            <MsgAudio key={a.id} url={a.url} />
                           ))}
                           {message.body && <p>{message.body}</p>}
                           {index === group.messages.length - 1 && (
@@ -523,6 +587,15 @@ export function Messenger() {
               })}
               {typingNames.length > 0 && <div className="typing">{typingNames.join(', ')} typing…</div>}
             </div>
+            {emojiOpen && (
+              <div className="emoji-grid">
+                {EMOJIS.map((e) => (
+                  <button key={e} type="button" className="emoji-btn" onClick={() => { setDraft((d) => d + e); setEmojiOpen(false); }}>
+                    {e}
+                  </button>
+                ))}
+              </div>
+            )}
             <form className="composer" onSubmit={(e) => void send(e)}>
               <input
                 ref={imageInput}
@@ -538,11 +611,27 @@ export function Messenger() {
               <button
                 className="icon-btn"
                 type="button"
+                aria-label="Emoji"
+                onClick={() => setEmojiOpen((o) => !o)}
+              >
+                😊
+              </button>
+              <button
+                className="icon-btn"
+                type="button"
                 disabled={imageBusy}
-                aria-label="Send image"
+                aria-label="Send photo"
                 onClick={() => imageInput.current?.click()}
               >
-                {imageBusy ? '…' : '✎'}
+                {imageBusy ? '…' : '📷'}
+              </button>
+              <button
+                className={`icon-btn ${recording ? 'recording' : ''}`}
+                type="button"
+                aria-label={recording ? 'Stop recording' : 'Record voice'}
+                onClick={() => recording ? stopRecording() : startRecording()}
+              >
+                {recording ? '⏹' : '🎤'}
               </button>
               <input
                 value={draft}
@@ -700,6 +789,13 @@ function Avatar({ user, online }: { user: PublicUser; online?: boolean }) {
 function MsgImage({ url, fileName }: { url: string; fileName?: string | null }) {
   const src = useMediaSrc(url);
   const [broken, setBroken] = useState(false);
-  if (broken || !src) return null;
+  if (broken) return <div className="msg-image-fallback">Couldn't load image</div>;
+  if (!src) return <div className="msg-image-fallback">Loading photo…</div>;
   return <img className="msg-image" src={src} alt={fileName ?? 'image'} onError={() => setBroken(true)} />;
+}
+
+function MsgAudio({ url }: { url: string }) {
+  const src = useMediaSrc(url);
+  if (!src) return <div className="msg-image-fallback">Loading audio…</div>;
+  return <audio controls src={src} className="msg-audio" />;
 }

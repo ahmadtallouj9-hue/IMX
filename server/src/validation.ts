@@ -26,6 +26,13 @@ export const sendMessageSchema = z.object({
   body: z.string().max(4000).optional(),
   clientMessageId: z.string().min(1).max(80).optional(),
   replyToId: z.string().min(1).max(64).optional(),
+  attachments: z.array(z.object({
+    url: z.string().min(1).max(500),
+    kind: z.string().min(1).max(20),
+    mimeType: z.string().max(80).optional(),
+    size: z.number().optional(),
+    fileName: z.string().max(200).optional(),
+  })).max(8).optional(),
 });
 
 export const updateProfileSchema = z.object({
