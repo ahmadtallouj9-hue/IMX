@@ -43,6 +43,7 @@ export const updateProfileSchema = z.object({
 
 export const chatPrefsSchema = z.object({
   muted: z.boolean().optional(),
+  pinned: z.boolean().optional(),
   theme: z.enum(['chatter', 'cove', 'dusk', 'ember', 'moss', 'midnight']).optional(),
   backgroundUrl: z.string().max(500).nullable().optional(),
 });

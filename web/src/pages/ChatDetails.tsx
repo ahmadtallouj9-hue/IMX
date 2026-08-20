@@ -6,6 +6,7 @@ import { formatTime } from '../lib/messages';
 
 const THEMES = [
   { id: 'chatter', label: 'IMX' },
+  { id: 'cove', label: 'Cove' },
   { id: 'dusk', label: 'Dusk' },
   { id: 'ember', label: 'Ember' },
   { id: 'moss', label: 'Moss' },
@@ -128,6 +129,16 @@ export function ChatDetails({ conversation, meId, people, query, onQuery, onClos
             onChange={(e) => void savePrefs({ muted: e.target.checked })}
           />
           Mute this chat
+        </label>
+
+        <label className="toggle">
+          <input
+            type="checkbox"
+            checked={Boolean(conversation.pinned)}
+            disabled={busy}
+            onChange={(e) => void savePrefs({ pinned: e.target.checked })}
+          />
+          Pin to top
         </label>
 
         <h3>Theme</h3>

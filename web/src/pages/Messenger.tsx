@@ -52,6 +52,19 @@ export function Messenger() {
   const [lightboxZoom, setLightboxZoom] = useState(1);
   const lightboxPos = useRef({ x: 0, y: 0 });
   const lightboxDrag = useRef<{ startX: number; startY: number; x: number; y: number } | null>(null);
+  const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<ChatMessage[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [forwardMsg, setForwardMsg] = useState<ChatMessage | null>(null);
+  const [lightMode, setLightMode] = useState(() => localStorage.getItem('imx.light') === '1');
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('light', lightMode);
+    localStorage.setItem('imx.light', lightMode ? '1' : '0');
+  }, [lightMode]);
 
   const scroller = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
@@ -114,6 +127,25 @@ export function Messenger() {
       if (payload.conversationId === conversationId && payload.sender.id !== me.id) {
         socket.emit('message:read', { conversationId, messageId: payload.id });
       }
+      if (document.visibilityState !== 'visible' && payload.sender.id !== me.id) {
+        try {
+          if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+            const title = payload.sender.displayName;
+            const bodyText = payload.body
+              ?? (payload.type === 'IMAGE' ? '📷 Photo'
+                : payload.type === 'VIDEO' ? '🎬 Video'
+                : payload.type === 'AUDIO' ? '🎤 Voice message'
+                : 'New message');
+            void new Notification(title, {
+              body: bodyText,
+              tag: `imx-${payload.conversationId}`,
+              icon: '/icon-192.png',
+            });
+          }
+        } catch {
+          /* notifications unsupported */
+        }
+      }
     };
     const onTypingStart = (p: { userId: string; displayName?: string; conversationId: string }) => {
       if (p.conversationId !== conversationId || p.userId === me.id) return;
@@ -137,6 +169,16 @@ export function Messenger() {
         ),
       );
     };
+    const onEdited = (p: { id: string; body: string; conversationId: string; editedAt: string }) => {
+      if (p.conversationId !== conversationId) return;
+      setMessages((curr) =>
+        curr.map((m) => (m.id === p.id ? { ...m, body: p.body, updatedAt: p.editedAt, edited: true } : m)),
+      );
+    };
+    const onDeleted = (p: { id: string; conversationId: string }) => {
+      if (p.conversationId !== conversationId) return;
+      setMessages((curr) => curr.map((m) => (m.id === p.id ? { ...m, body: null, deletedAt: p.conversationId } : m)));
+    };
     const onPresence = (p: { userId: string; isOnline: boolean; lastSeenAt?: string | null }) => {
       setPresence((curr) => ({ ...curr, [p.userId]: { isOnline: p.isOnline, lastSeenAt: p.lastSeenAt } }));
     };
@@ -154,6 +196,8 @@ export function Messenger() {
     socket.on('typing:start', onTypingStart);
     socket.on('typing:stop', onTypingStop);
     socket.on('message:read', onRead);
+    socket.on('message:edited', onEdited);
+    socket.on('message:deleted', onDeleted);
     socket.on('presence:update', onPresence);
     socket.on('presence:snapshot', onSnapshot);
     if (socket.connected) setConnected(true);
@@ -164,6 +208,8 @@ export function Messenger() {
       socket.off('typing:start', onTypingStart);
       socket.off('typing:stop', onTypingStop);
       socket.off('message:read', onRead);
+      socket.off('message:edited', onEdited);
+      socket.off('message:deleted', onDeleted);
       socket.off('presence:update', onPresence);
       socket.off('presence:snapshot', onSnapshot);
     };
@@ -245,6 +291,21 @@ export function Messenger() {
     if (!conversationId || !body || sending) return;
     setSending(true);
     setChatError(null);
+
+    if (editingId) {
+      try {
+        const res = await api.editMessage(conversationId, editingId, body);
+        setMessages((curr) => curr.map((m) => (m.id === editingId ? { ...m, ...res.message, edited: true } : m)));
+        setEditingId(null);
+        setDraft('');
+      } catch (err) {
+        setChatError(err instanceof ApiError ? err.message : 'Edit failed');
+      } finally {
+        setSending(false);
+      }
+      return;
+    }
+
     const clientMessageId = newClientId();
     const optimistic: ChatMessage = {
       id: clientMessageId,
@@ -254,6 +315,7 @@ export function Messenger() {
       status: 'SENT',
       sender: me,
       conversationId,
+      replyToId: replyTo?.id ?? null,
       createdAt: new Date().toISOString(),
       readBy: [],
     };
@@ -263,10 +325,11 @@ export function Messenger() {
     connectSocket().emit('typing:stop', { conversationId });
     joinConversation(conversationId);
     try {
-      const res = await api.sendMessage(conversationId, body, clientMessageId);
+      const res = await api.sendMessage(conversationId, body, clientMessageId, undefined, replyTo?.id ?? null);
       setMessages((curr) =>
         curr.map((m) => (m.clientMessageId === clientMessageId ? { ...res.message, clientMessageId } : m)),
       );
+      setReplyTo(null);
       void loadConversations();
     } catch (err) {
       setMessages((curr) => curr.filter((m) => m.clientMessageId !== clientMessageId));
@@ -427,6 +490,53 @@ export function Messenger() {
     typingTimer.current = window.setTimeout(() => socket.emit('typing:stop', { conversationId }), 1200);
   }
 
+  async function forwardTo(convId: string) {
+    const msg = forwardMsg;
+    if (!msg || !conversationId) return;
+    setForwardMsg(null);
+    setChatError(null);
+    try {
+      const clientMessageId = newClientId();
+      const body = msg.body ?? '';
+      const attachments = msg.attachments?.map((a) => ({ url: a.url, kind: a.kind, fileName: a.fileName ?? undefined }));
+      await api.sendMessage(convId, body, clientMessageId, attachments);
+      if (convId === conversationId) {
+        setMessages((curr) => [...curr, {
+          id: clientMessageId,
+          clientMessageId,
+          body,
+          type: msg.type,
+          status: 'SENT',
+          sender: me,
+          conversationId,
+          createdAt: new Date().toISOString(),
+          readBy: [],
+          attachments: msg.attachments,
+        }]);
+      }
+      void loadConversations();
+    } catch (err) {
+      setChatError(err instanceof ApiError ? err.message : 'Forward failed');
+    }
+  }
+
+  async function doSearch(q: string) {
+    setSearchQuery(q);
+    if (!conversationId || q.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    setSearching(true);
+    try {
+      const res = await api.searchMessages(conversationId, q.trim());
+      setSearchResults(res.messages);
+    } catch {
+      setSearchResults([]);
+    } finally {
+      setSearching(false);
+    }
+  }
+
   async function loadOlder() {
     if (!conversationId || !nextCursor || loadingOlder) return;
     const el = scroller.current;
@@ -496,6 +606,12 @@ export function Messenger() {
             <span className="logo-mark" />
             IMX
           </div>
+          <button className="icon-btn" type="button" onClick={() => { setLightMode((v) => !v); }} aria-label="Toggle light mode" title="Toggle light mode">
+            {lightMode ? '🌙' : '☀️'}
+          </button>
+          <button className="icon-btn" type="button" onClick={() => { void (async () => { try { await Notification.requestPermission(); } catch { /* unsupported */ } })(); }} aria-label="Enable notifications" title="Enable notifications">
+            🔔
+          </button>
           <button className="icon-btn" type="button" onClick={() => setFriendsOpen(true)} aria-label="Friends">
             ☺
           </button>
@@ -552,6 +668,7 @@ export function Messenger() {
                 </span>
                 <span className="meta">
                   <time>{formatTime(conv.lastMessageAt)}</time>
+                  {conv.pinned && <small>📌</small>}
                   {conv.muted ? <small>Muted</small> : conv.unreadCount > 0 && <em>{conv.unreadCount}</em>}
                 </span>
               </button>
@@ -620,8 +737,31 @@ export function Messenger() {
                     {!mine && <Avatar user={group.sender} />}
                     <div className="stack">
                       {!mine && <span className="who">{group.sender.displayName}</span>}
-                      {group.messages.map((message, index) => (
+                      {group.messages.map((message, index) => {
+                        const quoted = message.replyToId ? messages.find((m) => m.id === message.replyToId) : null;
+                        const isDeleted = message.body === null && (message.attachments?.length ?? 0) === 0;
+                        return (
                         <div key={message.id} className={`bubble ${message.type === 'IMAGE' ? 'has-image' : ''} ${message.type === 'AUDIO' ? 'has-audio' : ''} ${message.type === 'VIDEO' ? 'has-video' : ''}`}>
+                          {message.replyToId && (
+                            <button className="quote" type="button" onClick={() => { const el = document.getElementById(`msg-${message.replyToId}`); el?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }}>
+                              <strong>{quoted?.sender.displayName ?? 'Deleted message'}</strong>
+                              <span>{quoted?.body ?? (quoted?.attachments?.length ? '📎 Attachment' : 'Message deleted')}</span>
+                            </button>
+                          )}
+                          <div className="msg-actions">
+                            <button type="button" title="Reply" onClick={() => setReplyTo(message)}>↩</button>
+                            {message.sender.id === me.id && !isDeleted && message.body && (
+                              <>
+                                <button type="button" title="Edit" onClick={() => { setEditingId(message.id); setDraft(message.body ?? ''); }}>✎</button>
+                                <button type="button" title="Delete" onClick={() => void api.deleteMessage(conversationId!, message.id).then(() => setMessages((curr) => curr.map((m) => (m.id === message.id ? { ...m, body: null } : m))))}>🗑</button>
+                              </>
+                            )}
+                            <button type="button" title="Forward" onClick={() => setForwardMsg(message)}>→</button>
+                          </div>
+                          {isDeleted ? (
+                            <p className="deleted">This message was deleted</p>
+                          ) : (
+                            <>
                           {message.attachments?.filter(a => a.kind.toLowerCase().includes('image')).map(a => (
                             <MsgImage key={a.id} url={a.url} fileName={a.fileName} onOpen={(s) => { setLightboxSrc(s); setLightboxZoom(1); lightboxPos.current = { x: 0, y: 0 }; }} />
                           ))}
@@ -631,7 +771,10 @@ export function Messenger() {
                           {message.attachments?.filter(a => a.kind.toLowerCase().includes('audio')).map(a => (
                             <MsgAudio key={a.id} url={a.url} />
                           ))}
-                          {message.body && <p>{message.body}</p>}
+                          {message.body && <p id={`msg-${message.id}`}>{message.body}{message.edited && <em className="edited-mark"> · edited</em>}</p>}
+                          {!message.body && (message.attachments?.length ?? 0) === 0 && <p id={`msg-${message.id}`} className="deleted">This message was deleted</p>}
+                            </>
+                          )}
                           {index === group.messages.length - 1 && (
                             <span className="stamp">
                               {formatTime(message.createdAt)}
@@ -639,7 +782,8 @@ export function Messenger() {
                             </span>
                           )}
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 );
@@ -655,7 +799,61 @@ export function Messenger() {
                 ))}
               </div>
             )}
+            {searchOpen && (
+              <div className="msg-search">
+                <input
+                  value={searchQuery}
+                  onChange={(e) => void doSearch(e.target.value)}
+                  placeholder="Search in this chat…"
+                  autoFocus
+                />
+                {searching && <small>Searching…</small>}
+                {searchResults.length > 0 && (
+                  <div className="search-results">
+                    {searchResults.map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => { document.getElementById(`msg-${m.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }}
+                      >
+                        <strong>{m.sender.displayName}</strong>
+                        <span>{m.body ?? (m.type === 'IMAGE' ? '📷 Photo' : m.type === 'VIDEO' ? '🎬 Video' : m.type === 'AUDIO' ? '🎤 Voice' : 'Attachment')}</span>
+                        <small>{formatTime(m.createdAt)}</small>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {!searching && searchQuery.trim().length >= 2 && searchResults.length === 0 && (
+                  <small>No matches</small>
+                )}
+                <button className="icon-btn" type="button" aria-label="Close search" onClick={() => { setSearchOpen(false); setSearchResults([]); setSearchQuery(''); }}>
+                  ✕
+                </button>
+              </div>
+            )}
+            {(replyTo || editingId) && (
+              <div className="reply-bar">
+                {editingId ? (
+                  <span>Editing message…</span>
+                ) : (
+                  <span>
+                    Replying to <strong>{replyTo?.sender.displayName}</strong>: {replyTo?.body ?? (replyTo?.attachments?.length ? '📎 Attachment' : '')}
+                  </span>
+                )}
+                <button className="icon-btn" type="button" aria-label="Cancel" onClick={() => { setReplyTo(null); setEditingId(null); if (editingId) setDraft(''); }}>
+                  ✕
+                </button>
+              </div>
+            )}
             <form className="composer" onSubmit={(e) => void send(e)}>
+              <button
+                className={`icon-btn ${searchOpen ? 'active' : ''}`}
+                type="button"
+                aria-label="Search messages"
+                onClick={() => setSearchOpen((o) => !o)}
+              >
+                🔍
+              </button>
               <input
                 ref={imageInput}
                 type="file"
@@ -842,6 +1040,34 @@ export function Messenger() {
               Create group
             </button>
           </form>
+        </div>
+      )}
+
+      {forwardMsg && (
+        <div className="overlay" onClick={() => setForwardMsg(null)}>
+          <div className="sheet" onClick={(e) => e.stopPropagation()}>
+            <h2>Forward to…</h2>
+            <div className="conv-list">
+              {conversations.filter((c) => c.id !== conversationId).map((conv) => {
+                const name =
+                  conv.type === 'GROUP'
+                    ? conv.title ?? 'Group'
+                    : conv.members.find((m) => m.id !== me.id)?.displayName ?? conv.title ?? 'Chat';
+                return (
+                  <button key={conv.id} className="row" type="button" onClick={() => void forwardTo(conv.id)}>
+                    <Avatar user={conv.members.find((m) => m.id !== me.id) ?? { id: conv.id, username: name, displayName: name, avatarUrl: conv.imageUrl }} />
+                    <span>
+                      <strong>{name}</strong>
+                      <small>Forward message</small>
+                    </span>
+                  </button>
+                );
+              })}
+              {conversations.filter((c) => c.id !== conversationId).length === 0 && (
+                <p className="empty">No other conversations</p>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

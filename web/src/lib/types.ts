@@ -22,6 +22,7 @@ export type Conversation = {
   lastMessageAt: string;
   unreadCount: number;
   muted?: boolean;
+  pinned?: boolean;
   theme?: ChatTheme | string;
   backgroundUrl?: string | null;
   myRole?: string;
@@ -38,6 +39,8 @@ export type ChatMessage = {
   conversationId: string;
   createdAt: string;
   updatedAt?: string;
+  edited?: boolean;
+  deletedAt?: string | null;
   readBy: Array<{ userId: string; readAt: string }>;
   attachments?: Array<{ id: string; url: string; kind: string; fileName?: string | null; mimeType?: string | null }>;
 };

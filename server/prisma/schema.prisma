@@ -147,6 +147,7 @@ model ConversationMember {
   userId         String
   role           String   @default("MEMBER") // OWNER | ADMIN | MEMBER
   muted          Boolean  @default(false)
+  pinned         Boolean  @default(false)
   theme          String   @default("chatter")
   backgroundUrl  String?
   joinedAt       DateTime @default(now())

@@ -22,7 +22,7 @@ export class ConversationsController {
 
     const memberships = await prisma.conversationMember.findMany({
       where: { userId },
-      select: { conversationId: true, lastReadAt: true, muted: true, theme: true, backgroundUrl: true, role: true },
+      select: { conversationId: true, lastReadAt: true, muted: true, pinned: true, theme: true, backgroundUrl: true, role: true },
     });
 
     const convIds = memberships.map((m) => m.conversationId);
@@ -90,11 +90,14 @@ export class ConversationsController {
         lastMessageAt: c.lastMessageAt?.toISOString() ?? c.createdAt.toISOString(),
         unreadCount,
         muted: mine?.muted ?? false,
+        pinned: mine?.pinned ?? false,
         theme: mine?.theme ?? 'chatter',
         backgroundUrl: mine?.backgroundUrl ?? null,
         myRole: mine?.role ?? 'MEMBER',
       };
     }));
+
+    result.sort((a, b) => Number(b.pinned) - Number(a.pinned));
 
     reply.send({ conversations: result });
   }
@@ -212,8 +215,9 @@ export class ConversationsController {
     });
     if (!membership) throw forbidden('Not a member of this conversation');
 
-    const data: { muted?: boolean; theme?: string; backgroundUrl?: string | null } = {};
+    const data: { muted?: boolean; pinned?: boolean; theme?: string; backgroundUrl?: string | null } = {};
     if (body.muted !== undefined) data.muted = body.muted;
+    if (body.pinned !== undefined) data.pinned = body.pinned;
     if (body.theme !== undefined) data.theme = body.theme;
     if (body.backgroundUrl !== undefined) data.backgroundUrl = parseAvatarUrl(body.backgroundUrl) ?? null;
 
@@ -222,7 +226,7 @@ export class ConversationsController {
     const updated = await prisma.conversationMember.update({
       where: { id: membership.id },
       data,
-      select: { muted: true, theme: true, backgroundUrl: true },
+      select: { muted: true, pinned: true, theme: true, backgroundUrl: true },
     });
 
     reply.send({ prefs: updated });

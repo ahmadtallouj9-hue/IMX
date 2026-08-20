@@ -16,6 +16,23 @@
   font-family: "Segoe UI", "Avenir Next", sans-serif;
 }
 
+html.light {
+  --bg: #f2f6f8;
+  --bg-2: #e8eef1;
+  --surface: #ffffff;
+  --line: #d4dee3;
+  --text: #16242a;
+  --muted: #5f7580;
+  --accent: #0ea5a0;
+  --accent-2: #e05d3d;
+  --mine: #c7efe9;
+  --theirs: #ffffff;
+  --danger: #d64545;
+  --warn: #b8860b;
+  --shadow: 0 18px 50px rgba(30, 60, 70, 0.14);
+  color-scheme: light;
+}
+
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
 body { background: var(--bg); color: var(--text); }
@@ -326,6 +343,102 @@ button { cursor: pointer; }
   opacity: 0.8;
 }
 
+.quote {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: rgba(0, 0, 0, 0.16);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 6px 10px;
+  margin-bottom: 6px;
+  cursor: pointer;
+  overflow: hidden;
+}
+.quote strong { display: block; font-size: 0.78rem; color: var(--accent); }
+.quote span {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.msg-actions {
+  position: absolute;
+  top: -14px;
+  right: 8px;
+  display: none;
+  gap: 2px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 2px;
+  z-index: 2;
+}
+.bubble:hover .msg-actions { display: flex; }
+.msg-actions button {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 0.8rem;
+  padding: 4px 7px;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.msg-actions button:hover { background: var(--surface); color: var(--text); }
+
+.deleted { font-style: italic; color: var(--muted); }
+.edited-mark { font-style: normal; color: var(--muted); font-size: 0.72rem; }
+
+.msg-search {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 20px 0;
+}
+.msg-search .search-results {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 6px;
+}
+.search-results button {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px 10px;
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+.search-results button:hover { background: var(--surface); }
+.search-results strong { font-size: 0.82rem; color: var(--accent); }
+.search-results span { font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.search-results small { font-size: 0.7rem; color: var(--muted); }
+.msg-search > small { grid-column: 1 / -1; color: var(--muted); font-size: 0.78rem; }
+
+.reply-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 20px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+  font-size: 0.85rem;
+}
+.reply-bar strong { color: var(--accent); }
+
 .typing {
   color: var(--muted);
   font-size: 0.8rem;
@@ -513,6 +626,8 @@ button { cursor: pointer; }
   display: grid;
   gap: 12px;
 }
+.sheet .conv-list { max-height: 60vh; overflow-y: auto; display: grid; gap: 4px; }
+.sheet .conv-list .row { text-align: left; }
 .actions, .picks { display: flex; gap: 8px; flex-wrap: wrap; }
 .picks button, .file {
   border: 1px solid var(--line);

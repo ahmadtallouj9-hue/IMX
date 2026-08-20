@@ -128,13 +128,24 @@ export const api = {
       `/conversations/${conversationId}/messages?${qs}`,
     );
   },
-  sendMessage: (conversationId: string, body: string, clientMessageId: string, attachments?: Array<{ url: string; kind: string; fileName?: string }>) =>
+  sendMessage: (conversationId: string, body: string, clientMessageId: string, attachments?: Array<{ url: string; kind: string; fileName?: string }>, replyToId?: string | null) =>
     request<{ message: ChatMessage }>(`/conversations/${conversationId}/messages`, {
       method: 'POST',
-      body: JSON.stringify({ body, clientMessageId, attachments }),
+      body: JSON.stringify({ body, clientMessageId, attachments, replyToId }),
     }),
-  updatePrefs: (id: string, prefs: { muted?: boolean; theme?: string; backgroundUrl?: string | null }) =>
-    request<{ prefs: { muted: boolean; theme: string; backgroundUrl: string | null } }>(`/conversations/${id}/prefs`, {
+  editMessage: (conversationId: string, messageId: string, body: string) =>
+    request<{ message: ChatMessage }>(`/conversations/${conversationId}/messages/${messageId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ body }),
+    }),
+  deleteMessage: (conversationId: string, messageId: string) =>
+    request<{ success: boolean }>(`/conversations/${conversationId}/messages/${messageId}`, { method: 'DELETE' }),
+  searchMessages: (conversationId: string, q: string) =>
+    request<{ messages: ChatMessage[] }>(
+      `/search/messages?q=${encodeURIComponent(q)}&conversationId=${conversationId}`,
+    ),
+  updatePrefs: (id: string, prefs: { muted?: boolean; pinned?: boolean; theme?: string; backgroundUrl?: string | null }) =>
+    request<{ prefs: { muted: boolean; pinned: boolean; theme: string; backgroundUrl: string | null } }>(`/conversations/${id}/prefs`, {
       method: 'PATCH',
       body: JSON.stringify(prefs),
     }),
