@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-export NODE_ENV=development
+export NODE_ENV=production
 cd web
 rm -rf node_modules
 npm install
