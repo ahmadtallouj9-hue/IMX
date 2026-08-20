@@ -12,7 +12,7 @@ COPY --from=builder /app/server ./server
 COPY --from=builder /app/web-dist ./web-dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
-# Copy .env from builder's server directory
-COPY --from=builder /app/server/.env ./.env
+# Copy .env - simpler approach, copy whole server dir
+COPY --from=builder /app/server ./server
 EXPOSE 8080
 CMD ["node", "dist/src/server.js"]
