@@ -1,5 +1,5 @@
 {
-  "name": "chatter",
+  "name": "imx",
   "version": "1.0.0",
   "private": true,
   "main": "electron-main.js",
@@ -17,8 +17,8 @@
     "electron:build:portable": "npm run build:prod && electron-builder --win portable"
   },
   "build": {
-    "appId": "com.chatter.app",
-    "productName": "Chatter",
+    "appId": "com.imx.app",
+    "productName": "IMX",
     "directories": {
       "output": "dist-electron"
     },

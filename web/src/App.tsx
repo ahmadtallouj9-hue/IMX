@@ -34,7 +34,7 @@ export function App() {
     return (
       <div className="boot">
         <div className="boot-mark" />
-        <p>Opening Chatter…</p>
+        <p>Opening IMX…</p>
       </div>
     );
   }

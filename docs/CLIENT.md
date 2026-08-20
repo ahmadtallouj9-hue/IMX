@@ -1,4 +1,4 @@
-# Client — Chatter Flutter App
+# Client — IMX Flutter App
 
 Flutter application targeting **Android** and **Windows** from a single
 codebase. Uses **Material 3**, responsive layouts, **Riverpod** for state,
@@ -12,7 +12,7 @@ client/
 ├── lib/
 │   ├── main.dart
 │   ├── app/
-│   │   ├── app.dart            # root ChatterApp (Riverpod + theme + router)
+│   │   ├── app.dart            # root IMXApp (Riverpod + theme + router)
 │   │   └── router/             # GoRouter configuration
 │   ├── core/
 │   │   ├── constants/          # app branding + API endpoints

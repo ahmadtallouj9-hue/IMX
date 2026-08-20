@@ -341,7 +341,7 @@ export function Messenger() {
         <header className="sidebar-head">
           <div className="brand compact">
             <span className="logo-mark" />
-            Chatter
+            IMX
           </div>
           <button className="icon-btn" type="button" onClick={() => setFriendsOpen(true)} aria-label="Friends">
             ☺

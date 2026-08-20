@@ -18,7 +18,7 @@ async function main(): Promise<void> {
 
   try {
     await app.listen({ port: env.PORT, host: env.HOST });
-    logger.info(`Chatter API listening on http://${env.HOST}:${env.PORT}`);
+    logger.info(`IMX API listening on http://${env.HOST}:${env.PORT}`);
   } catch (err) {
     logger.error(err);
     await disconnectDatabase();

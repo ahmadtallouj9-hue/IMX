@@ -15,7 +15,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js')
     },
     icon: path.join(__dirname, 'web', 'public', 'icon.png'),
-    title: 'Chatter'
+    title: 'IMX'
   });
 
   mainWindow.loadFile(path.join(__dirname, 'web', 'dist', 'index.html'));

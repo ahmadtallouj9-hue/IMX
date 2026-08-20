@@ -1,4 +1,4 @@
-# Backend — Chatter API
+# Backend — IMX API
 
 Node.js + TypeScript backend built with **Fastify**, **Prisma** (PostgreSQL),
 **Socket.IO** and **Redis** (optional). Clean separation between routes,

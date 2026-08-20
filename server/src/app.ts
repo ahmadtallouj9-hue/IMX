@@ -18,7 +18,7 @@ const DOWNLOAD_HTML = `<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Chatter — Download</title>
+<title>IMX — Download</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
@@ -83,7 +83,7 @@ Download for Android
 <div class="phone"><div class="notch"></div><div class="screen"><div class="screen-header">Friends</div><div class="screen-bubble received" style="background:#6366f1;color:#fff;max-width:100%;margin:6px 8px;border-radius:8px;">+ Ahmad</div><div class="screen-bubble received" style="background:#27272a;max-width:100%;margin:4px 8px;border-radius:8px;">+ Sarah</div><div class="screen-bubble received" style="background:#27272a;max-width:100%;margin:4px 8px;border-radius:8px;">+ Mike</div></div></div>
 <div class="phone"><div class="notch"></div><div class="screen"><div class="screen-header">Login</div><div class="screen-bubble received" style="background:#27272a;max-width:100%;margin:16px 10px;border-radius:6px;font-size:0.4rem;">Email</div><div class="screen-bubble received" style="background:#27272a;max-width:100%;margin:4px 10px;border-radius:6px;font-size:0.4rem;">Password</div><div class="screen-bubble sent" style="max-width:100%;margin:10px 10px 0;border-radius:6px;font-size:0.45rem;text-align:center;">Sign In</div></div></div>
 </div>
-<p class="footer">Chatter &copy; 2026 &middot; Built with React + Node.js</p>
+<p class="footer">IMX &copy; 2026 &middot; Built with React + Node.js</p>
 </div>
 </body>
 </html>`;

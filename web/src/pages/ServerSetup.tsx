@@ -28,10 +28,10 @@ export function ServerSetup({ onReady }: { onReady: () => void }) {
       <div className="auth-hero">
         <div className="brand">
           <span className="logo-mark" />
-          Chatter
+          IMX
         </div>
         <h1>Install and connect.</h1>
-        <p>This app talks to your Chatter server on the same Wi‑Fi.</p>
+        <p>This app talks to your IMX server on the same Wi‑Fi.</p>
       </div>
       <form className="auth-card" onSubmit={(e) => void onSubmit(e)}>
         <h2>Server address</h2>

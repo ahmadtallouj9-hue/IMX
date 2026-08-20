@@ -1,4 +1,4 @@
-# Chatter — Production-Ready Messaging App
+# IMX — Production-Ready Messaging App
 
 A modern, real-time messaging application (inspired by Messenger/Discord-style apps)
 with its own original brand. Supports **Android**, **Windows PC**, and **web**.
@@ -71,7 +71,7 @@ docker compose up --build   # PostgreSQL + Redis + backend
 2. Deploy from `server/` folder
 3. Set env vars: `DATABASE_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `CORS_ORIGIN`, `NODE_ENV=production`
 4. Run `npm run build:prod` and include `web-dist` in the deploy (Dockerfile expects it)
-5. Point a domain (e.g. `chatter.example.com`) at Railway with HTTPS
+5. Point a domain (e.g. `imx.example.com`) at Railway with HTTPS
 6. Set `CORS_ORIGIN=https://your-domain.com` and rebuild
 
 ### PWA
@@ -122,7 +122,7 @@ MAX_UPLOAD_MB=25
 
 ## Branding
 
-The app brand ("Chatter") and colors are centralized so they can be changed in one place:
+The app brand ("IMX") and colors are centralized so they can be changed in one place:
 - React: `web/src/pages/ServerSetup.tsx`, `web/src/pages/ChatDetails.tsx`
 - Flutter: `client/lib/core/theme/app_theme.dart`
 - Icons: `web/public/icon.svg` → generated to `icon-192.png`, `icon-512.png`

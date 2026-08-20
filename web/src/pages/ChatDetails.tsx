@@ -5,7 +5,7 @@ import type { Conversation, PublicUser } from '../lib/types';
 import { formatTime } from '../lib/messages';
 
 const THEMES = [
-  { id: 'chatter', label: 'Chatter' },
+  { id: 'chatter', label: 'IMX' },
   { id: 'dusk', label: 'Dusk' },
   { id: 'ember', label: 'Ember' },
   { id: 'moss', label: 'Moss' },

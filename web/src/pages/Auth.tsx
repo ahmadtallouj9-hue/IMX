@@ -44,7 +44,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
       <div className="auth-hero">
         <div className="brand">
           <span className="logo-mark" />
-          Chatter
+          IMX
         </div>
         <h1>Welcome</h1>
         <p>Real-time messaging for everyone.</p>
@@ -79,7 +79,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
         {error && <div className="banner error">{error}</div>}
         {installable && !isStandalone() && (
           <button className="btn" type="button" onClick={() => void promptInstall()}>
-            Install Chatter app
+            Install IMX app
           </button>
         )}
         <button className="btn primary" type="submit" disabled={busy}>
