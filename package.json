@@ -1,0 +1,49 @@
+{
+  "name": "chatter",
+  "version": "1.0.0",
+  "private": true,
+  "main": "electron-main.js",
+  "scripts": {
+    "dev": "echo Run dev:server and dev:web in separate terminals",
+    "dev:server": "npm run dev --prefix server",
+    "dev:web": "npm run dev --prefix web",
+    "test": "npm test --prefix server && npm test --prefix web",
+    "typecheck": "npm run typecheck --prefix server && npm run typecheck --prefix web",
+    "build": "npm run build --prefix server && npm run build --prefix web",
+    "build:prod": "npm run build --prefix web && node scripts/copy-web-dist.mjs && npm run build --prefix server",
+    "icons": "node scripts/generate-icons.mjs",
+    "electron:dev": "npm run build:prod && electron .",
+    "electron:build": "npm run build:prod && electron-builder --win",
+    "electron:build:portable": "npm run build:prod && electron-builder --win portable"
+  },
+  "build": {
+    "appId": "com.chatter.app",
+    "productName": "Chatter",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "electron-main.js",
+      "preload.js",
+      "web/dist/**/*",
+      "server/**/*",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "web/public/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "devDependencies": {
+    "electron": "^43.4.1",
+    "electron-builder": "^26.15.3",
+    "sharp": "^0.35.3"
+  }
+}

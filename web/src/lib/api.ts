@@ -1,0 +1,179 @@
+import type { ChatMessage, Conversation, PublicUser } from './types';
+
+const TOKEN_KEY = 'cove.accessToken';
+const REFRESH_KEY = 'cove.refreshToken';
+const API_KEY = 'cove.apiUrl';
+const DEFAULT_NATIVE_API = 'https://chatter-api-production-af6b.up.railway.app';
+
+export function getApiUrl(): string {
+  try {
+    const stored = globalThis.localStorage?.getItem(API_KEY);
+    if (stored) return stored.replace(/\/$/, '');
+  } catch {
+    /* ignore */
+  }
+  const fromEnv = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
+  if (fromEnv) return fromEnv;
+  try {
+    const cap = (globalThis as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
+    if (cap?.isNativePlatform?.()) return DEFAULT_NATIVE_API;
+  } catch {
+    /* ignore */
+  }
+  return '';
+}
+
+export function setApiUrl(url: string): void {
+  localStorage.setItem(API_KEY, url.trim().replace(/\/$/, ''));
+}
+
+export const API_URL = getApiUrl();
+
+export function getAccessToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+export function setTokens(accessToken: string, refreshToken: string): void {
+  localStorage.setItem(TOKEN_KEY, accessToken);
+  localStorage.setItem(REFRESH_KEY, refreshToken);
+}
+
+export function clearTokens(): void {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(REFRESH_KEY);
+}
+
+export class ApiError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
+
+async function parseError(res: Response): Promise<ApiError> {
+  try {
+    const body = await res.json();
+    return new ApiError(res.status, body.error?.message ?? res.statusText);
+  } catch {
+    return new ApiError(res.status, res.statusText);
+  }
+}
+
+async function refreshAccessToken(): Promise<string | null> {
+  const refreshToken = localStorage.getItem(REFRESH_KEY);
+  if (!refreshToken) return null;
+  const res = await fetch(`${getApiUrl()}/auth/refresh`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refreshToken }),
+  });
+  if (!res.ok) {
+    clearTokens();
+    return null;
+  }
+  const body = await res.json();
+  setTokens(body.tokens.accessToken, body.tokens.refreshToken);
+  return body.tokens.accessToken as string;
+}
+
+export async function request<T>(path: string, init: RequestInit = {}, retry = true): Promise<T> {
+  const headers = new Headers(init.headers);
+  if (!(init.body instanceof FormData) && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+  const token = getAccessToken();
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+
+  const res = await fetch(`${getApiUrl()}${path}`, { ...init, headers });
+  if (res.status === 401 && retry && localStorage.getItem(REFRESH_KEY)) {
+    const next = await refreshAccessToken();
+    if (next) return request<T>(path, init, false);
+  }
+  if (!res.ok) throw await parseError(res);
+  if (res.status === 204) return undefined as T;
+  return res.json() as Promise<T>;
+}
+
+export const api = {
+  register: (payload: { username: string; email: string; password: string; displayName: string }) =>
+    request<{ user: PublicUser; tokens: { accessToken: string; refreshToken: string } }>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  login: (identifier: string, password: string) =>
+    request<{ user: PublicUser; tokens: { accessToken: string; refreshToken: string } }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ identifier, password }),
+    }),
+  health: () => request<{ status: string }>('/health/live'),
+  logout: () => request<{ success: boolean }>('/auth/logout', { method: 'POST' }),
+  me: () => request<{ user: PublicUser }>('/auth/me'),
+  updateMe: (payload: { displayName?: string; bio?: string; avatarUrl?: string | null }) =>
+    request<{ user: PublicUser }>('/users/me', { method: 'PATCH', body: JSON.stringify(payload) }),
+  searchUsers: (q: string) => request<{ users: PublicUser[] }>(`/users/search?q=${encodeURIComponent(q)}`),
+  getUser: (id: string) => request<{ user: PublicUser }>(`/users/${id}`),
+  conversations: () => request<{ conversations: Conversation[] }>('/conversations'),
+  createConversation: (participantIds: string[], title?: string) =>
+    request<{ conversationId: string }>('/conversations', {
+      method: 'POST',
+      body: JSON.stringify({ participantIds, title }),
+    }),
+  getConversation: (id: string) => request<{ conversation: Conversation & { members: Array<{ user: PublicUser }> } }>(`/conversations/${id}`),
+  markRead: (id: string) => request<{ success: boolean }>(`/conversations/${id}/read`, { method: 'POST' }),
+  messages: (conversationId: string, cursor?: string | null) => {
+    const qs = new URLSearchParams({ limit: '40' });
+    if (cursor) qs.set('cursor', cursor);
+    return request<{ messages: ChatMessage[]; nextCursor: string | null; hasMore: boolean }>(
+      `/conversations/${conversationId}/messages?${qs}`,
+    );
+  },
+  sendMessage: (conversationId: string, body: string, clientMessageId: string) =>
+    request<{ message: ChatMessage }>(`/conversations/${conversationId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ body, clientMessageId }),
+    }),
+  updatePrefs: (id: string, prefs: { muted?: boolean; theme?: string; backgroundUrl?: string | null }) =>
+    request<{ prefs: { muted: boolean; theme: string; backgroundUrl: string | null } }>(`/conversations/${id}/prefs`, {
+      method: 'PATCH',
+      body: JSON.stringify(prefs),
+    }),
+  addMembers: (id: string, userIds: string[]) =>
+    request<{ added: string[] }>(`/groups/${id}/members`, {
+      method: 'POST',
+      body: JSON.stringify({ userIds }),
+    }),
+  leaveGroup: (id: string) => request<{ success: boolean }>(`/groups/${id}/leave`, { method: 'POST' }),
+  removeMember: (id: string, userId: string) =>
+    request<{ success: boolean }>(`/groups/${id}/members/${userId}`, { method: 'DELETE' }),
+  upload: async (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return request<{ url: string; fileName: string }>('/uploads', { method: 'POST', body: form });
+  },
+  friends: () => request<{ friends: PublicUser[] }>('/friends'),
+  friendRequests: () => request<{ received: Array<{ id: string; user: PublicUser; createdAt: string }>; sent: Array<{ id: string; user: PublicUser; createdAt: string }> }>('/friends/requests'),
+  sendFriendRequest: (recipientId: string) => request<{ id: string; user: PublicUser; createdAt: string }>('/friends/request', { method: 'POST', body: JSON.stringify({ recipientId }) }),
+  acceptFriendRequest: (requestId: string) => request<{ success: boolean }>(`/friends/accept/${requestId}`, { method: 'POST' }),
+  rejectFriendRequest: (requestId: string) => request<{ success: boolean }>(`/friends/reject/${requestId}`, { method: 'POST' }),
+  removeFriend: (friendId: string) => request<{ success: boolean }>(`/friends/${friendId}`, { method: 'DELETE' }),
+  notifications: () => request<{ notifications: Array<{ id: string; type: string; title: string; body?: string; read: boolean; createdAt: string }> }>('/notifications'),
+  unreadNotificationCount: () => request<{ count: number }>('/notifications/unread-count'),
+  markNotificationsRead: () => request<{ success: boolean }>('/notifications/read-all', { method: 'POST' }),
+};
+
+const SAFE_UPLOAD = /^\/uploads\/[A-Za-z0-9._-]+\.(jpg|jpeg|png|gif|webp)$/i;
+
+export function toUploadPath(url: string): string {
+  const index = url.indexOf('/uploads/');
+  const path = (index === -1 ? url : url.slice(index)).split('?')[0].split('#')[0];
+  return path;
+}
+
+export function mediaUrl(url?: string | null): string | undefined {
+  if (!url) return undefined;
+  if (url.startsWith('blob:')) return url;
+  const path = toUploadPath(url);
+  if (!SAFE_UPLOAD.test(path)) return undefined;
+  return `${getApiUrl()}${path}`;
+}

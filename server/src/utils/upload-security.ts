@@ -1,0 +1,40 @@
+import { badRequest } from './errors';
+
+export const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+const AVATAR_PATH = /^\/uploads\/[A-Za-z0-9._-]+\.(jpg|jpeg|png|gif|webp)$/i;
+const FILE_NAME = /^[A-Za-z0-9._-]+\.(jpg|jpeg|png|gif|webp)$/i;
+
+export type SniffedImage = { mime: string; ext: string };
+
+export function sniffImage(buf: Buffer): SniffedImage | null {
+  if (buf.length < 12) return null;
+  if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) {
+    return { mime: 'image/jpeg', ext: '.jpg' };
+  }
+  if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) {
+    return { mime: 'image/png', ext: '.png' };
+  }
+  if (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46) {
+    return { mime: 'image/gif', ext: '.gif' };
+  }
+  if (buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP') {
+    return { mime: 'image/webp', ext: '.webp' };
+  }
+  return null;
+}
+
+export function isSafeUploadName(filename: string): boolean {
+  return FILE_NAME.test(filename);
+}
+
+export function parseAvatarUrl(input: string | null | undefined): string | null | undefined {
+  if (input === undefined) return undefined;
+  if (input === null || input.trim() === '') return null;
+  const trimmed = input.trim();
+  const path = trimmed.includes('/uploads/') ? trimmed.slice(trimmed.indexOf('/uploads/')) : trimmed;
+  const clean = path.split('?')[0].split('#')[0];
+  if (!AVATAR_PATH.test(clean)) {
+    throw badRequest('Avatar must be an uploaded JPEG, PNG, GIF, or WebP image');
+  }
+  return clean;
+}

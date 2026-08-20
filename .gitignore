@@ -1,0 +1,39 @@
+# ---- Root ----
+.DS_Store
+Thumbs.db
+*.log
+node_modules/
+dist/
+build/
+.env
+.env.local
+
+# ---- Server ----
+server/node_modules/
+server/dist/
+server/.env
+server/coverage/
+server/prisma/*.db
+server/uploads/
+
+# ---- Client (Flutter/Dart) ----
+client/.dart_tool/
+client/.flutter-plugins
+client/.flutter-plugins-dependencies
+client/build/
+client/.idea/
+client/*.iml
+client/android/.gradle/
+client/android/local.properties
+client/android/key.properties
+client/android/app/.cxx/
+client/windows/flutter/ephemeral/
+client/linux/flutter/ephemeral/
+client/macos/flutter/ephemeral/
+
+# ---- IDE / misc ----
+.vscode/
+.idea/
+
+# ---- Local toolchain (large SDK downloads) ----
+tools/

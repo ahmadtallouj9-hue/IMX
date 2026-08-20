@@ -1,0 +1,241 @@
+// Chatter database schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Identity: User + Profile
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String    @id @default(uuid())
+  username      String    @unique
+  email         String    @unique
+  passwordHash  String
+  displayName   String
+  bio           String?
+  avatarUrl     String?
+  isOnline      Boolean   @default(false)
+  lastSeenAt    DateTime?
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  profile          Profile?
+  sessions         Session[]
+  sentFriendReqs   FriendRequest[]     @relation("Sender")
+  recvFriendReqs   FriendRequest[]     @relation("Recipient")
+  friendshipsA     Friendship[]        @relation("UserA")
+  friendshipsB     Friendship[]        @relation("UserB")
+  blocked          BlockedUser[]       @relation("Blocker")
+  blockedBy        BlockedUser[]       @relation("Blocked")
+  memberships      ConversationMember[]
+  messages         Message[]
+  messageReads     MessageRead[]
+  notifications    Notification[]
+
+  @@index([username])
+  @@index([email])
+}
+
+model Profile {
+  userId    String   @id
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  theme     String?  @default("system")
+  language  String?  @default("en")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Sessions & tokens
+// ---------------------------------------------------------------------------
+
+model Session {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshToken String   @unique
+  userAgent    String?
+  ip           String?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  revokedAt    DateTime?
+
+  @@index([userId])
+  @@index([refreshToken])
+}
+
+// ---------------------------------------------------------------------------
+// Friends
+// ---------------------------------------------------------------------------
+
+model FriendRequest {
+  id          String   @id @default(uuid())
+  senderId    String
+  recipientId String
+  status      String   @default("PENDING") // PENDING | ACCEPTED | REJECTED
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  sender    User @relation("Sender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient User @relation("Recipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, recipientId])
+  @@index([recipientId, status])
+  @@index([senderId])
+}
+
+model Friendship {
+  id        String   @id @default(uuid())
+  userAId   String
+  userBId   String
+  createdAt DateTime @default(now())
+
+  userA User @relation("UserA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB User @relation("UserB", fields: [userBId], references: [id], onDelete: Cascade)
+
+  @@unique([userAId, userBId])
+  @@index([userAId])
+  @@index([userBId])
+}
+
+model BlockedUser {
+  id        String   @id @default(uuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  blocker User @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockerId])
+  @@index([blockedId])
+}
+
+// ---------------------------------------------------------------------------
+// Conversations
+// ---------------------------------------------------------------------------
+
+model Conversation {
+  id             String   @id @default(uuid())
+  type           String   @default("DIRECT") // DIRECT | GROUP
+  title          String?
+  imageUrl       String?
+  createdBy      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  lastMessageAt  DateTime?
+
+  members   ConversationMember[]
+  messages  Message[]
+
+  @@index([type])
+  @@index([updatedAt])
+}
+
+model ConversationMember {
+  id             String   @id @default(uuid())
+  conversationId String
+  userId         String
+  role           String   @default("MEMBER") // OWNER | ADMIN | MEMBER
+  muted          Boolean  @default(false)
+  theme          String   @default("chatter")
+  backgroundUrl  String?
+  joinedAt       DateTime @default(now())
+  lastReadAt     DateTime? @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+  @@index([conversationId])
+}
+
+// ---------------------------------------------------------------------------
+// Messages
+// ---------------------------------------------------------------------------
+
+model Message {
+  id              String    @id @default(uuid())
+  clientMessageId String?   @unique
+  conversationId  String
+  senderId        String
+  type            String    @default("TEXT") // TEXT | IMAGE | FILE | SYSTEM
+  body            String?
+  status          String    @default("SENT") // SENT | DELIVERED | READ
+  replyToId       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  replyTo      Message?     @relation("ReplyChain", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies      Message[]    @relation("ReplyChain")
+  attachments  MessageAttachment[]
+  readBy       MessageRead[]
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+  @@index([conversationId, id])
+}
+
+model MessageAttachment {
+  id        String   @id @default(uuid())
+  messageId String
+  kind      String
+  url       String
+  mimeType  String?
+  size      Int?
+  fileName  String?
+  width     Int?
+  height    Int?
+  createdAt DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+}
+
+model MessageRead {
+  id        String   @id @default(uuid())
+  messageId String
+  userId    String
+  readAt    DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([userId])
+  @@index([messageId])
+}
+
+// ---------------------------------------------------------------------------
+// Notifications
+// ---------------------------------------------------------------------------
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String
+  title     String
+  body      String?
+  data      String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@index([userId, createdAt])
+}

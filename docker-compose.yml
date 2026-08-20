@@ -1,0 +1,62 @@
+# Chatter dev environment.
+# The Flutter client runs natively; services are provided here for development.
+
+version: "3.8"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: chatter-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: chatter
+      POSTGRES_PASSWORD: chatter
+      POSTGRES_DB: chatter
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chatter"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: chatter-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: chatter-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      NODE_ENV: development
+      PORT: 8080
+      DATABASE_URL: postgresql://chatter:chatter@db:5432/chatter?schema=public
+      JWT_SECRET: chatter-dev-jwt-secret-minimum-32-chars
+      JWT_REFRESH_SECRET: chatter-dev-refresh-secret-minimum-32-chars
+      REDIS_URL: redis://redis:6379
+      STORAGE_DRIVER: local
+      STORAGE_LOCAL_DIR: /app/uploads
+    ports:
+      - "8080:8080"
+    volumes:
+      - uploads_data:/app/uploads
+
+volumes:
+  db_data:
+  redis_data:
+  uploads_data:
