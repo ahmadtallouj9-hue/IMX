@@ -11,6 +11,5 @@ cd server
 rm -rf node_modules
 npm install
 npx prisma generate
-npx prisma migrate deploy
 npx tsc
 cd ..
