@@ -37,3 +37,9 @@ client/macos/flutter/ephemeral/
 
 # ---- Local toolchain (large SDK downloads) ----
 tools/
+
+# ---- Build artifacts (too large for GitHub) ----
+Chatter-Windows.exe
+Chatter.apk
+dist-electron/
+download-site.zip
