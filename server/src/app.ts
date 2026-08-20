@@ -5,13 +5,12 @@ import multipart from '@fastify/multipart';
 import { existsSync, createReadStream, mkdirSync, readFileSync } from 'fs';
 import { basename, extname, join } from 'path';
 import { isSafeUploadName } from './utils/upload-security';
+import { getUploadsDir, readStoredFile } from './utils/storage';
 import { env, isAllowedOrigin } from './config';
 import { logger } from './utils/logger';
 import { registerRoutes } from './routes';
 import { errorHandler } from './middleware/error-handler';
 import { setupSocketIO } from './websocket/socket';
-
-const UPLOADS_DIR = join(process.cwd(), 'uploads');
 
 const DOWNLOAD_HTML = `<!DOCTYPE html>
 <html lang="en">
@@ -97,12 +96,24 @@ export function buildApp(): FastifyInstance {
 
   app.setErrorHandler(errorHandler);
 
+  if (env.NODE_ENV === 'production') {
+    app.addHook('onRequest', async (req, reply) => {
+      const proto = req.headers['x-forwarded-proto'];
+      if (proto && proto !== 'https') {
+        return reply.redirect(301, `https://${req.hostname}${req.url}`);
+      }
+    });
+  }
+
   app.addHook('onSend', async (_req, reply, payload) => {
     reply.header('X-Content-Type-Options', 'nosniff');
     reply.header('X-Frame-Options', 'DENY');
     reply.header('Referrer-Policy', 'strict-origin-when-cross-origin');
-    reply.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    reply.header('Permissions-Policy', 'camera=(), microphone=(self), geolocation=()');
     reply.header('X-DNS-Prefetch-Control', 'off');
+    if (env.NODE_ENV === 'production') {
+      reply.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    }
     return payload;
   });
 
@@ -127,8 +138,8 @@ export function buildApp(): FastifyInstance {
 
   void app.register(registerRoutes);
 
-  // Ensure uploads directory exists
-  mkdirSync(UPLOADS_DIR, { recursive: true });
+  const uploadsDir = getUploadsDir();
+  mkdirSync(uploadsDir, { recursive: true });
 
   const webDist = [
     join(process.cwd(), 'web-dist'),
@@ -189,7 +200,7 @@ export function buildApp(): FastifyInstance {
   });
 
   // --- APK download ---
-  const apkPath = join(UPLOADS_DIR, 'chatter.apk');
+  const apkPath = join(uploadsDir, 'chatter.apk');
   app.get('/download', async (_req, reply) => {
     if (!existsSync(apkPath)) {
       return reply.code(404).send({ error: 'APK not found' });
@@ -205,6 +216,11 @@ export function buildApp(): FastifyInstance {
     '.png': 'image/png',
     '.gif': 'image/gif',
     '.webp': 'image/webp',
+    '.webm': 'audio/webm',
+    '.ogg': 'audio/ogg',
+    '.mp3': 'audio/mpeg',
+    '.wav': 'audio/wav',
+    '.m4a': 'audio/mp4',
   };
 
   app.get('/uploads/:filename', async (req, reply) => {
@@ -213,16 +229,25 @@ export function buildApp(): FastifyInstance {
     if (!safeName || safeName !== filename || !isSafeUploadName(safeName)) {
       return reply.code(400).send({ error: 'Invalid filename' });
     }
-    const filePath = join(UPLOADS_DIR, safeName);
-    if (!existsSync(filePath)) {
-      return reply.code(404).send({ error: 'File not found' });
-    }
     const type = uploadMime[extname(safeName).toLowerCase()] ?? 'application/octet-stream';
     reply.header('Content-Type', type);
     reply.header('X-Content-Type-Options', 'nosniff');
     reply.header('Content-Disposition', 'inline');
     reply.header('Cache-Control', 'public, max-age=31536000, immutable');
-    return reply.send(createReadStream(filePath));
+
+    const filePath = join(uploadsDir, safeName);
+    if (existsSync(filePath)) {
+      return reply.send(createReadStream(filePath));
+    }
+
+    if (env.STORAGE_DRIVER === 's3') {
+      const buf = await readStoredFile(safeName);
+      if (buf) {
+        return reply.send(buf);
+      }
+    }
+
+    return reply.code(404).send({ error: 'File not found' });
   });
 
   setupSocketIO(app as any);

@@ -1,6 +1,7 @@
 import { createWriteStream, mkdirSync, existsSync } from 'fs';
 import { join, resolve } from 'path';
 import { randomBytes } from 'crypto';
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { env } from '../config';
 import { logger } from './logger';
 
@@ -67,13 +68,60 @@ async function storeLocal(
   return { url, fileName, mimeType, size: buffer.length };
 }
 
+let s3Client: S3Client | null = null;
+
+function getS3Client(): S3Client {
+  if (s3Client) return s3Client;
+  s3Client = new S3Client({
+    region: env.S3_REGION ?? 'us-east-1',
+    endpoint: env.S3_ENDPOINT || undefined,
+    credentials: {
+      accessKeyId: env.S3_ACCESS_KEY ?? '',
+      secretAccessKey: env.S3_SECRET_KEY ?? '',
+    },
+  });
+  return s3Client;
+}
+
 async function storeToS3(
   buffer: Buffer,
   originalName: string,
   mimeType: string,
 ): Promise<UploadResult> {
-  // S3 upload would require @aws-sdk/client-s3
-  // For now, fall back to local storage
-  logger.warn('S3 storage not implemented, falling back to local');
-  return storeLocal(buffer, originalName, mimeType);
+  const fileName = generateFileName(originalName);
+  const client = getS3Client();
+  await client.send(
+    new PutObjectCommand({
+      Bucket: env.S3_BUCKET,
+      Key: fileName,
+      Body: buffer,
+      ContentType: mimeType,
+    }),
+  );
+
+  const baseUrl = env.STORAGE_PUBLIC_BASE_URL.replace(/\/$/, '');
+  const path = `/uploads/${fileName}`;
+  const url = `${baseUrl}${path}`;
+
+  return { url, fileName, mimeType, size: buffer.length };
+}
+
+export async function readStoredFile(fileName: string): Promise<Buffer | null> {
+  if (env.STORAGE_DRIVER === 's3') {
+    try {
+      const res = await getS3Client().send(
+        new GetObjectCommand({ Bucket: env.S3_BUCKET, Key: fileName }),
+      );
+      const chunks: Buffer[] = [];
+      for await (const chunk of res.Body as AsyncIterable<Uint8Array>) {
+        chunks.push(Buffer.from(chunk));
+      }
+      return Buffer.concat(chunks);
+    } catch (err: any) {
+      if (err?.name === 'NoSuchKey') return null;
+      logger.warn({ err: err?.message }, 'Failed to read from S3');
+      return null;
+    }
+  }
+  return null;
 }
