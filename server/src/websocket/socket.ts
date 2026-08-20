@@ -4,7 +4,6 @@ import { Server as SocketIOServer } from 'socket.io';
 import { verifyAccessToken } from '../utils/jwt.service';
 import { prisma } from '../database/prisma';
 import { logger } from '../utils/logger';
-import { isAllowedOrigin } from '../config';
 
 let io: SocketIOServer;
 
@@ -43,10 +42,7 @@ function emitPresence(userId: string, isOnline: boolean): void {
 export function setupSocketIO(app: FastifyInstance): void {
   io = new SocketIOServer(app.server as unknown as Server, {
     cors: {
-      origin: (origin, next) => {
-        if (isAllowedOrigin(origin)) next(null, true);
-        else next(new Error('Origin not allowed'));
-      },
+      origin: true,
       methods: ['GET', 'POST'],
       credentials: true,
     },
