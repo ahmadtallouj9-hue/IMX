@@ -48,6 +48,10 @@ export function Messenger() {
   const [imageBusy, setImageBusy] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [recording, setRecording] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [lightboxZoom, setLightboxZoom] = useState(1);
+  const lightboxPos = useRef({ x: 0, y: 0 });
+  const lightboxDrag = useRef<{ startX: number; startY: number; x: number; y: number } | null>(null);
 
   const scroller = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
@@ -584,7 +588,7 @@ export function Messenger() {
                       {group.messages.map((message, index) => (
                         <div key={message.id} className={`bubble ${message.type === 'IMAGE' ? 'has-image' : ''} ${message.type === 'AUDIO' ? 'has-audio' : ''}`}>
                           {message.attachments?.filter(a => a.kind.toLowerCase().includes('image')).map(a => (
-                            <MsgImage key={a.id} url={a.url} fileName={a.fileName} />
+                            <MsgImage key={a.id} url={a.url} fileName={a.fileName} onOpen={(s) => { setLightboxSrc(s); setLightboxZoom(1); lightboxPos.current = { x: 0, y: 0 }; }} />
                           ))}
                           {message.attachments?.filter(a => a.kind.toLowerCase().includes('audio')).map(a => (
                             <MsgAudio key={a.id} url={a.url} />
@@ -782,6 +786,42 @@ export function Messenger() {
           </form>
         </div>
       )}
+
+      {lightboxSrc && (
+        <div
+          className="lightbox"
+          onClick={() => { setLightboxSrc(null); setLightboxZoom(1); lightboxPos.current = { x: 0, y: 0 }; }}
+          onWheel={(e) => {
+            e.preventDefault();
+            setLightboxZoom((z) => Math.min(8, Math.max(1, z + (e.deltaY > 0 ? -0.25 : 0.25))));
+          }}
+          onMouseDown={(e) => { lightboxDrag.current = { startX: e.clientX, startY: e.clientY, x: lightboxPos.current.x, y: lightboxPos.current.y }; }}
+          onMouseMove={(e) => {
+            if (!lightboxDrag.current) return;
+            lightboxPos.current = {
+              x: lightboxDrag.current.x + (e.clientX - lightboxDrag.current.startX),
+              y: lightboxDrag.current.y + (e.clientY - lightboxDrag.current.startY),
+            };
+          }}
+          onMouseUp={() => { lightboxDrag.current = null; }}
+          onMouseLeave={() => { lightboxDrag.current = null; }}
+        >
+          <img
+            src={lightboxSrc}
+            alt=""
+            className="lightbox-img"
+            draggable={false}
+            style={{
+              transform: `translate(${lightboxPos.current.x}px, ${lightboxPos.current.y}px) scale(${lightboxZoom})`,
+            }}
+            onDoubleClick={() => { setLightboxZoom(1); lightboxPos.current = { x: 0, y: 0 }; }}
+          />
+          <button className="lightbox-close" type="button" onClick={(e) => { e.stopPropagation(); setLightboxSrc(null); setLightboxZoom(1); lightboxPos.current = { x: 0, y: 0 }; }}>
+            ✕
+          </button>
+          <div className="lightbox-hint">Scroll to zoom · Drag to pan · Double-click to reset</div>
+        </div>
+      )}
     </div>
   );
 }
@@ -803,12 +843,21 @@ function Avatar({ user, online }: { user: PublicUser; online?: boolean }) {
   );
 }
 
-function MsgImage({ url, fileName }: { url: string; fileName?: string | null }) {
+function MsgImage({ url, fileName, onOpen }: { url: string; fileName?: string | null; onOpen?: (src: string) => void }) {
   const src = useMediaSrc(url);
   const [broken, setBroken] = useState(false);
   if (broken) return <div className="msg-image-fallback">Couldn't load image</div>;
   if (!src) return <div className="msg-image-fallback">Loading photo…</div>;
-  return <img className="msg-image" src={src} alt={fileName ?? 'image'} onError={() => setBroken(true)} />;
+  return (
+    <img
+      className="msg-image"
+      src={src}
+      alt={fileName ?? 'image'}
+      loading="lazy"
+      onClick={() => onOpen?.(src)}
+      onError={() => setBroken(true)}
+    />
+  );
 }
 
 function MsgAudio({ url }: { url: string }) {

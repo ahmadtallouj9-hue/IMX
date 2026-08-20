@@ -73,6 +73,18 @@ async function storeLocal(
 
 let s3Client: S3Client | null = null;
 
+// Simple in-memory cache for DB-stored files (bounded by count)
+const dbCache = new Map<string, { data: Buffer; mime: string; size: number }>();
+const DB_CACHE_MAX = 200;
+
+function cacheSet(fileName: string, data: Buffer, mime: string): void {
+  if (dbCache.size >= DB_CACHE_MAX) {
+    const first = dbCache.keys().next().value;
+    if (first) dbCache.delete(first);
+  }
+  dbCache.set(fileName, { data, mime, size: data.length });
+}
+
 function getS3Client(): S3Client {
   if (s3Client) return s3Client;
   s3Client = new S3Client({
@@ -151,7 +163,11 @@ async function storeToDb(
 }
 
 async function readFromDb(fileName: string): Promise<Buffer | null> {
+  const cached = dbCache.get(fileName);
+  if (cached) return cached.data;
   const { prisma } = await import('../database/prisma');
   const rec = await prisma.storedUpload.findUnique({ where: { fileName } });
-  return rec ? Buffer.from(rec.data) : null;
+  if (!rec) return null;
+  cacheSet(fileName, Buffer.from(rec.data), rec.mimeType);
+  return Buffer.from(rec.data);
 }

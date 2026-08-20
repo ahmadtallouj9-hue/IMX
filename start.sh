@@ -2,8 +2,8 @@
 
 cd server
 
-echo "Waiting 30s for database to wake up..."
-sleep 30
+echo "Waiting 10s for database to wake up..."
+sleep 10
 
 echo "Running prisma migrate deploy..."
 for i in 1 2 3 4 5 6; do
