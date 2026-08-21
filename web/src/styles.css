@@ -611,6 +611,8 @@ html.light .avatar {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  height: 100%;
+  overflow: hidden;
   background:
     radial-gradient(ellipse at 50% 0%, rgba(46, 196, 182, 0.04), transparent 50%),
     var(--bg);
