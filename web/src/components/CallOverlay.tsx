@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import type { CallState, CallMode } from '../lib/useWebRTC';
+import type { CallState, CallMode, CallInfo } from '../lib/useWebRTC';
 import { useMediaSrc } from '../lib/media';
 import { initials } from '../lib/messages';
 import type { PublicUser } from '../lib/types';
@@ -17,7 +17,7 @@ function MiniAvatar({ user }: { user: { displayName: string; username?: string; 
 
 interface CallOverlayProps {
   callState: CallState;
-  callInfo: { conversationId: string; peerId: string; peerName: string; peerAvatar?: string | null; mode: CallMode } | null;
+  callInfo: CallInfo | null;
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
   muted: boolean;

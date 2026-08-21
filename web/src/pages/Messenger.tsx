@@ -165,6 +165,25 @@ export function Messenger() {
         } catch {
           /* notifications unsupported */
         }
+        try {
+          if (navigator.userAgent.includes('Android') && (window as any).Capacitor) {
+            const bodyText = payload.body
+              ?? (payload.type === 'IMAGE' ? '📷 Photo'
+                : payload.type === 'VIDEO' ? '🎬 Video'
+                : payload.type === 'AUDIO' ? '🎤 Voice message'
+                : 'New message');
+            import('@capacitor/local-notifications').then(({ LocalNotifications }) => {
+              LocalNotifications.requestPermissions();
+              LocalNotifications.schedule({
+                notifications: [{
+                  title: payload.sender.displayName,
+                  body: bodyText,
+                  id: Math.floor(Math.random() * 100000),
+                }],
+              });
+            });
+          }
+        } catch { /* unsupported */ }
       }
     };
     const onTypingStart = (p: { userId: string; displayName?: string; conversationId: string }) => {
@@ -213,6 +232,20 @@ export function Messenger() {
     const onNotifNew = (n: { id: string; type: string; title: string; body?: string; read: boolean; createdAt: string }) => {
       setNotifCount((c) => c + 1);
       setNotifList((curr) => [n, ...curr]);
+      try {
+        if (navigator.userAgent.includes('Android') && (window as any).Capacitor) {
+          import('@capacitor/local-notifications').then(({ LocalNotifications }) => {
+            LocalNotifications.requestPermissions();
+            LocalNotifications.schedule({
+              notifications: [{
+                title: n.title,
+                body: n.body ?? '',
+                id: Math.floor(Math.random() * 100000),
+              }],
+            });
+          });
+        }
+      } catch { /* unsupported */ }
     };
 
     socket.on('connect', onConnect);
@@ -656,7 +689,8 @@ export function Messenger() {
             {lightMode ? <IconMoon /> : <IconSun />}
           </button>
           <div style={{ position: 'relative' }}>
-            <button className="icon-btn" type="button" onClick={() => {
+            <button className="icon-btn" type="button" onClick={(e) => {
+              e.stopPropagation();
               setNotifsOpen((v) => !v);
               if (!notifsOpen) {
                 api.notifications().then((r) => setNotifList(r.notifications)).catch(() => {});
@@ -1258,10 +1292,12 @@ export function Messenger() {
         muted={webrtc.muted}
         videoOff={webrtc.videoOff}
         onAccept={() => {
-          const offer = webrtc.pendingOffer.current;
-          const convId = webrtc.pendingConversationId.current;
-          if (offer && convId && webrtc.callInfo) {
-            webrtc.acceptCall(convId, webrtc.callInfo.peerId, webrtc.callInfo.peerName, webrtc.callInfo.peerAvatar, offer, webrtc.callInfo.mode);
+          const offer = (window as any).__pendingCallOffer as RTCSessionDescriptionInit | undefined;
+          const peerId = (window as any).__pendingCallPeerId as string | undefined;
+          const convId = (window as any).__pendingCallConvId as string | undefined;
+          if (offer && convId && peerId && webrtc.callInfo) {
+            webrtc.acceptCall(convId, peerId, webrtc.callInfo.peerName, webrtc.callInfo.peerAvatar, offer, webrtc.callInfo.mode);
+            (window as any).__pendingCallOffer = null;
           }
         }}
         onReject={() => {
