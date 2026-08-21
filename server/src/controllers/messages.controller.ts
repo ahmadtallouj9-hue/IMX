@@ -182,6 +182,36 @@ export class MessagesController {
     try {
       const { getIO } = await import('../websocket/socket');
       getIO()?.to(`conversation:${conversationId}`).emit('message:new', payload);
+
+      const members = await prisma.conversationMember.findMany({
+        where: { conversationId, userId: { not: userId } },
+        select: { userId: true },
+      });
+      const senderName = message.sender.displayName;
+      const preview = message.type === 'AUDIO' ? '🎤 Voice message'
+        : message.type === 'IMAGE' ? '📷 Photo'
+        : message.type === 'VIDEO' ? '🎬 Video'
+        : (message.body?.slice(0, 100) ?? 'Sent an attachment');
+      const io = getIO();
+      for (const m of members) {
+        const notif = await prisma.notification.create({
+          data: {
+            userId: m.userId,
+            type: 'NEW_MESSAGE',
+            title: senderName,
+            body: preview,
+            data: JSON.stringify({ conversationId, messageId: message.id, senderId: userId }),
+          },
+        });
+        io?.to(`user:${m.userId}`).emit('notification:new', {
+          id: notif.id,
+          type: notif.type,
+          title: notif.title,
+          body: notif.body,
+          read: false,
+          createdAt: notif.createdAt.toISOString(),
+        });
+      }
     } catch {
       // Socket server may not be listening in isolated HTTP tests.
     }

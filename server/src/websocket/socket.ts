@@ -10,6 +10,9 @@ let io: SocketIOServer;
 // Map userId -> Set of socket ids (user can have multiple devices)
 const onlineUsers = new Map<string, Set<string>>();
 
+// Active calls: conversationId -> { callerId, calleeId }
+const activeCalls = new Map<string, { callerId: string; calleeId: string }>();
+
 export function getIO(): SocketIOServer {
   return io;
 }
@@ -256,6 +259,122 @@ export function setupSocketIO(app: FastifyInstance): void {
       }
     });
 
+    // --- Call signaling ---
+
+    socket.on('call:init', async (data: { conversationId: string; calleeId: string; offer: unknown }) => {
+      if (!data?.conversationId || !data?.calleeId || !data?.offer) return;
+      const membership = await prisma.conversationMember.findUnique({
+        where: { conversationId_userId: { conversationId: data.conversationId, userId } },
+      });
+      if (!membership) return;
+
+      if (activeCalls.has(data.conversationId)) {
+        socket.emit('call:busy', { conversationId: data.conversationId });
+        return;
+      }
+
+      const calleeSockets = onlineUsers.get(data.calleeId);
+      if (!calleeSockets || calleeSockets.size === 0) {
+        socket.emit('call:offline', { conversationId: data.conversationId, calleeId: data.calleeId });
+        return;
+      }
+
+      activeCalls.set(data.conversationId, { callerId: userId, calleeId: data.calleeId });
+
+      const caller = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, username: true, displayName: true, avatarUrl: true },
+      });
+
+      for (const sid of calleeSockets) {
+        io.to(sid).emit('call:ringing', {
+          conversationId: data.conversationId,
+          caller,
+          offer: data.offer,
+        });
+      }
+
+      try {
+        const callerName = caller?.displayName ?? 'Someone';
+        const notif = await prisma.notification.create({
+          data: {
+            userId: data.calleeId,
+            type: 'INCOMING_CALL',
+            title: `${callerName} is calling`,
+            body: 'Voice call',
+            data: JSON.stringify({ conversationId: data.conversationId, callerId: userId }),
+          },
+        });
+        io.to(`user:${data.calleeId}`).emit('notification:new', {
+          id: notif.id,
+          type: notif.type,
+          title: notif.title,
+          body: notif.body,
+          read: false,
+          createdAt: notif.createdAt.toISOString(),
+        });
+      } catch { /* notification creation failed, not critical */ }
+    });
+
+    socket.on('call:accept', async (data: { conversationId: string; answer: unknown }) => {
+      if (!data?.conversationId || !data?.answer) return;
+      const call = activeCalls.get(data.conversationId);
+      if (!call || call.calleeId !== userId) return;
+
+      const callerSockets = onlineUsers.get(call.callerId);
+      if (callerSockets) {
+        for (const sid of callerSockets) {
+          io.to(sid).emit('call:accepted', {
+            conversationId: data.conversationId,
+            answer: data.answer,
+          });
+        }
+      }
+    });
+
+    socket.on('call:reject', async (data: { conversationId: string }) => {
+      if (!data?.conversationId) return;
+      const call = activeCalls.get(data.conversationId);
+      if (!call) return;
+
+      const callerSockets = onlineUsers.get(call.callerId);
+      if (callerSockets) {
+        for (const sid of callerSockets) {
+          io.to(sid).emit('call:rejected', { conversationId: data.conversationId });
+        }
+      }
+      activeCalls.delete(data.conversationId);
+    });
+
+    socket.on('call:ice', async (data: { conversationId: string; targetUserId: string; candidate: unknown }) => {
+      if (!data?.conversationId || !data?.candidate) return;
+      const targetSockets = onlineUsers.get(data.targetUserId);
+      if (targetSockets) {
+        for (const sid of targetSockets) {
+          io.to(sid).emit('call:ice', {
+            conversationId: data.conversationId,
+            candidate: data.candidate,
+            fromUserId: userId,
+          });
+        }
+      }
+    });
+
+    socket.on('call:end', async (data: { conversationId: string }) => {
+      if (!data?.conversationId) return;
+      const call = activeCalls.get(data.conversationId);
+      if (!call) return;
+
+      const otherUserId = call.callerId === userId ? call.calleeId : call.callerId;
+      const otherSockets = onlineUsers.get(otherUserId);
+      if (otherSockets) {
+        for (const sid of otherSockets) {
+          io.to(sid).emit('call:ended', { conversationId: data.conversationId });
+        }
+      }
+      activeCalls.delete(data.conversationId);
+    });
+
     socket.on('disconnect', async () => {
       logger.info({ userId, socketId: socket.id }, 'Socket disconnected');
       const sockets = onlineUsers.get(userId);
@@ -275,6 +394,7 @@ export function setupSocketIO(app: FastifyInstance): void {
 }
 
 async function joinUserRooms(socket: any, userId: string): Promise<void> {
+  socket.join(`user:${userId}`);
   const memberships = await prisma.conversationMember.findMany({
     where: { userId },
     select: { conversationId: true },

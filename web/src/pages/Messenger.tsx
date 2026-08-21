@@ -10,6 +10,8 @@ import { EMOJIS } from '../lib/emojis';
 import type { ChatMessage, Conversation, PublicUser } from '../lib/types';
 import { ChatDetails } from './ChatDetails';
 import { FriendsPanel } from './FriendsPanel';
+import { useWebRTC } from '../lib/useWebRTC';
+import { CallOverlay } from '../components/CallOverlay';
 
 type PresenceMap = Record<string, { isOnline: boolean; lastSeenAt?: string | null }>;
 
@@ -18,6 +20,8 @@ export function Messenger() {
   const navigate = useNavigate();
   const { conversationId } = useParams();
   const me = user!;
+
+  const webrtc = useWebRTC(me);
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [listError, setListError] = useState<string | null>(null);
@@ -60,6 +64,9 @@ export function Messenger() {
   const [searching, setSearching] = useState(false);
   const [forwardMsg, setForwardMsg] = useState<ChatMessage | null>(null);
   const [lightMode, setLightMode] = useState(() => localStorage.getItem('imx.light') === '1');
+  const [notifsOpen, setNotifsOpen] = useState(false);
+  const [notifCount, setNotifCount] = useState(0);
+  const [notifList, setNotifList] = useState<Array<{ id: string; type: string; title: string; body?: string; read: boolean; createdAt: string }>>([]);
 
   useEffect(() => {
     document.documentElement.classList.toggle('light', lightMode);
@@ -92,6 +99,18 @@ export function Messenger() {
   useEffect(() => {
     void loadConversations();
   }, [loadConversations]);
+
+  useEffect(() => {
+    void api.unreadNotificationCount().then((r) => setNotifCount(r.count)).catch(() => {});
+    try { if (typeof Notification !== 'undefined' && Notification.permission === 'default') Notification.requestPermission(); } catch { /* unsupported */ }
+  }, []);
+
+  useEffect(() => {
+    if (!notifsOpen) return;
+    const close = () => setNotifsOpen(false);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [notifsOpen]);
 
   useEffect(() => {
     const socket = connectSocket();
@@ -191,9 +210,15 @@ export function Messenger() {
       });
     };
 
+    const onNotifNew = (n: { id: string; type: string; title: string; body?: string; read: boolean; createdAt: string }) => {
+      setNotifCount((c) => c + 1);
+      setNotifList((curr) => [n, ...curr]);
+    };
+
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
     socket.on('message:new', onMessage);
+    socket.on('notification:new', onNotifNew);
     socket.on('typing:start', onTypingStart);
     socket.on('typing:stop', onTypingStop);
     socket.on('message:read', onRead);
@@ -206,6 +231,7 @@ export function Messenger() {
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
       socket.off('message:new', onMessage);
+      socket.off('notification:new', onNotifNew);
       socket.off('typing:start', onTypingStart);
       socket.off('typing:stop', onTypingStop);
       socket.off('message:read', onRead);
@@ -629,9 +655,44 @@ export function Messenger() {
           <button className="icon-btn" type="button" onClick={() => { setLightMode((v) => !v); }} aria-label="Toggle light mode" title="Toggle light mode">
             {lightMode ? <IconMoon /> : <IconSun />}
           </button>
-          <button className="icon-btn" type="button" onClick={() => { void (async () => { try { await Notification.requestPermission(); } catch { /* unsupported */ } })(); }} aria-label="Enable notifications" title="Enable notifications">
-            <IconBell />
-          </button>
+          <div style={{ position: 'relative' }}>
+            <button className="icon-btn" type="button" onClick={() => {
+              setNotifsOpen((v) => !v);
+              if (!notifsOpen) {
+                api.notifications().then((r) => setNotifList(r.notifications)).catch(() => {});
+                api.markNotificationsRead().then(() => setNotifCount(0)).catch(() => {});
+              }
+            }} aria-label="Notifications" title="Notifications" style={{ position: 'relative' }}>
+              <IconBell />
+              {notifCount > 0 && <span className="notif-badge">{notifCount > 99 ? '99+' : notifCount}</span>}
+            </button>
+            {notifsOpen && (
+              <div className="notif-panel" onClick={(e) => e.stopPropagation()}>
+                <div className="notif-header">
+                  <strong>Notifications</strong>
+                  <button className="text-btn" type="button" onClick={() => {
+                    api.markNotificationsRead().then(() => setNotifCount(0)).catch(() => {});
+                    setNotifList((curr) => curr.map((n) => ({ ...n, read: true })));
+                  }}>Mark all read</button>
+                </div>
+                {notifList.length === 0 ? (
+                  <p className="notif-empty">No notifications yet</p>
+                ) : (
+                  notifList.map((n) => (
+                    <div key={n.id} className={`notif-item ${n.read ? '' : 'unread'}`}>
+                      <div className="notif-icon">
+                        {n.type === 'FRIEND_REQUEST' ? '👤' : n.type === 'FRIEND_ACCEPTED' ? '✅' : n.type === 'INCOMING_CALL' ? '📞' : '💬'}
+                      </div>
+                      <div className="notif-content">
+                        <strong>{n.title}</strong>
+                        {n.body && <p>{n.body}</p>}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
           <button className="icon-btn" type="button" onClick={() => setFriendsOpen(true)} aria-label="Friends">
             <IconUsers />
           </button>
@@ -736,6 +797,34 @@ export function Messenger() {
                   </small>
                 </span>
               </button>
+              {peer && (
+                <button
+                  className="icon-btn call-btn-header"
+                  type="button"
+                  onClick={() => {
+                    if (!peer || !conversationId) return;
+                    webrtc.startCall(conversationId, peer.id, peer.displayName, peer.avatarUrl, 'voice');
+                  }}
+                  aria-label="Voice call"
+                  disabled={webrtc.callState !== 'idle'}
+                >
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+                </button>
+              )}
+              {peer && (
+                <button
+                  className="icon-btn call-btn-header"
+                  type="button"
+                  onClick={() => {
+                    if (!peer || !conversationId) return;
+                    webrtc.startCall(conversationId, peer.id, peer.displayName, peer.avatarUrl, 'video');
+                  }}
+                  aria-label="Video call"
+                  disabled={webrtc.callState !== 'idle'}
+                >
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                </button>
+              )}
               <button className="icon-btn" type="button" onClick={() => setDetailsOpen(true)} aria-label="Chat settings">
                 <IconMore />
               </button>
@@ -1161,6 +1250,32 @@ export function Messenger() {
           <div className="lightbox-hint">Scroll to zoom · Drag to pan · Double-click to reset</div>
         </div>
       )}
+      <CallOverlay
+        callState={webrtc.callState}
+        callInfo={webrtc.callInfo}
+        localStream={webrtc.localStream}
+        remoteStream={webrtc.remoteStream}
+        muted={webrtc.muted}
+        videoOff={webrtc.videoOff}
+        onAccept={() => {
+          const offer = (window as any).__pendingCallOffer;
+          const convId = (window as any).__pendingCallConversationId;
+          if (offer && convId && webrtc.callInfo) {
+            webrtc.acceptCall(convId, webrtc.callInfo.peerName, webrtc.callInfo.peerAvatar, offer, webrtc.callInfo.mode);
+          }
+        }}
+        onReject={() => {
+          const convId = (window as any).__pendingCallConversationId;
+          if (convId) webrtc.rejectCall(convId);
+        }}
+        onEnd={() => {
+          if (webrtc.callInfo) webrtc.endCall(webrtc.callInfo.conversationId);
+        }}
+        onToggleMute={webrtc.toggleMute}
+        onToggleVideo={webrtc.toggleVideo}
+        onToggleScreenShare={webrtc.toggleScreenShare}
+        screenSharing={webrtc.screenSharing}
+      />
     </div>
   );
 }
