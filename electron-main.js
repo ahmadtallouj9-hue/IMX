@@ -10,13 +10,22 @@ function createWindow() {
     height: 800,
     webPreferences: {
       nodeIntegration: false,
-      contextIsolation: true
+      contextIsolation: true,
+      webSecurity: false
     },
     icon: path.join(__dirname, 'web', 'public', 'icon.png'),
     title: 'IMX'
   });
 
-  mainWindow.loadURL(`${SERVER_URL}/app`);
+  mainWindow.loadURL(`${SERVER_URL}/`);
+
+  if (process.argv.includes('--dev')) {
+    mainWindow.webContents.openDevTools();
+  }
+
+  mainWindow.webContents.on('did-fail-load', (e, code, desc) => {
+    console.error(`Failed to load: ${code} ${desc}`);
+  });
 
   mainWindow.on('closed', () => {
     mainWindow = null;
