@@ -1,0 +1,14 @@
+.git
+node_modules
+dist
+dist-electron
+*.log
+server/.env
+server/uploads
+web/dist
+Chatter-Windows.exe
+docs
+tools
+download-site
+download-site.zip
+.claude-flow

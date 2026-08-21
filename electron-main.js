@@ -18,10 +18,52 @@ function createWindow() {
     title: 'IMX'
   });
 
-  mainWindow.loadFile(path.join(__dirname, 'web', 'dist', 'index.html'));
+  mainWindow.loadURL('http://localhost:8080');
 
   mainWindow.on('closed', () => {
     mainWindow = null;
+  });
+}
+
+function waitForServer(url, timeout = 30000) {
+  return new Promise((resolve, reject) => {
+    const start = Date.now();
+    const check = async () => {
+      try {
+        const res = await fetch(url);
+        if (res.ok) return resolve();
+      } catch {}
+      if (Date.now() - start > timeout) return reject(new Error('Server start timed out'));
+      setTimeout(check, 500);
+    };
+    check();
+  });
+}
+
+const serverEnv = {
+  ...process.env,
+  NODE_ENV: 'production',
+  PORT: '8080',
+  DATABASE_URL: 'file:./chatter.db',
+  JWT_SECRET: 'electron-jwt-secret-minimum-32-characters',
+  JWT_REFRESH_SECRET: 'electron-jwt-refresh-secret-minimum-32-chars',
+  CORS_ORIGIN: 'http://localhost:8080',
+  STORAGE_DRIVER: 'local',
+  STORAGE_LOCAL_DIR: path.join(__dirname, 'uploads')
+};
+
+function runMigrate() {
+  const prismaPath = path.join(__dirname, 'server', 'node_modules', '.bin', 'prisma');
+  const schemaPath = path.join(__dirname, 'server', 'prisma', 'schema.prisma');
+  return new Promise((resolve, reject) => {
+    const proc = spawn(
+      process.platform === 'win32' ? prismaPath + '.cmd' : prismaPath,
+      ['db', 'push', '--schema', schemaPath, '--accept-data-loss'],
+      { cwd: path.join(__dirname, 'server'), env: serverEnv }
+    );
+    proc.stdout.on('data', (d) => console.log(d.toString()));
+    proc.stderr.on('data', (d) => console.error(d.toString()));
+    proc.on('close', (code) => code === 0 ? resolve() : reject(new Error(`prisma migrate exited ${code}`)));
   });
 }
 
@@ -29,17 +71,7 @@ function startServer() {
   const serverPath = path.join(__dirname, 'server', 'dist', 'src', 'server.js');
   serverProcess = spawn('node', [serverPath], {
     cwd: path.join(__dirname, 'server'),
-    env: {
-      ...process.env,
-      NODE_ENV: 'production',
-      PORT: '8080',
-      DATABASE_URL: 'file:./chatter.db',
-      JWT_SECRET: 'electron-jwt-secret-change-in-production',
-      JWT_REFRESH_SECRET: 'electron-jwt-refresh-secret-change-in-production',
-      CORS_ORIGIN: 'http://localhost:8080',
-      STORAGE_DRIVER: 'local',
-      STORAGE_LOCAL_DIR: path.join(__dirname, 'uploads')
-    }
+    env: serverEnv
   });
 
   serverProcess.stdout.on('data', (data) => {
@@ -51,8 +83,21 @@ function startServer() {
   });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  try {
+    await runMigrate();
+  } catch (e) {
+    console.error('Migration failed:', e.message);
+  }
+
   startServer();
+
+  try {
+    await waitForServer('http://localhost:8080/health/live');
+  } catch (e) {
+    console.error('Server failed to start:', e.message);
+  }
+
   createWindow();
 
   app.on('activate', () => {
