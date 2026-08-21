@@ -14,7 +14,7 @@ function getNodePath() {
 
 function getServerRoot() {
   if (app.isPackaged) {
-    return path.join(process.resourcesPath, 'app.asar.unpacked', 'server');
+    return path.join(process.resourcesPath, 'server');
   }
   return path.join(__dirname, 'server');
 }

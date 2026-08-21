@@ -27,12 +27,7 @@
     "files": [
       "electron-main.js",
       "preload.js",
-      "web/dist/**/*",
-      "server/**/*",
       "node_modules/**/*"
-    ],
-    "asarUnpack": [
-      "server/**/*"
     ],
     "extraResources": [
       {
@@ -40,6 +35,7 @@
         "to": "node.exe"
       }
     ],
+    "afterPack": "scripts/after-pack.js",
     "win": {
       "target": [
         "nsis",
