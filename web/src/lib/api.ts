@@ -51,6 +51,8 @@ export class ApiError extends Error {
   }
 }
 
+let refreshInflight: Promise<string | null> | null = null;
+
 async function parseError(res: Response): Promise<ApiError> {
   try {
     const body = await res.json();
@@ -61,21 +63,33 @@ async function parseError(res: Response): Promise<ApiError> {
 }
 
 async function refreshAccessToken(): Promise<string | null> {
-  const refreshToken = localStorage.getItem(REFRESH_KEY);
-  if (!refreshToken) return null;
-  const res = await fetch(`${getApiUrl()}/auth/refresh`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refreshToken }),
-  });
-  if (!res.ok) {
-    clearTokens();
-    return null;
-  }
-  const body = await res.json();
-  setTokens(body.tokens.accessToken, body.tokens.refreshToken);
-  return body.tokens.accessToken as string;
+  if (refreshInflight) return refreshInflight;
+  refreshInflight = (async () => {
+    try {
+      const refreshToken = localStorage.getItem(REFRESH_KEY);
+      if (!refreshToken) return null;
+      const res = await fetch(`${getApiUrl()}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      });
+      if (!res.ok) {
+        clearTokens();
+        return null;
+      }
+      const body = await res.json();
+      setTokens(body.tokens.accessToken, body.tokens.refreshToken);
+      return body.tokens.accessToken as string;
+    } catch {
+      return null;
+    } finally {
+      refreshInflight = null;
+    }
+  })();
+  return refreshInflight;
 }
+
+export { refreshAccessToken };
 
 export async function request<T>(path: string, init: RequestInit = {}, retry = true): Promise<T> {
   const headers = new Headers(init.headers);

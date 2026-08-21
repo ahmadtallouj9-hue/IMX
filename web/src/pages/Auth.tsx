@@ -76,7 +76,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
           Password
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} required minLength={8} />
         </label>
-        {error && <div className="banner error">{error}</div>}
+        {error && <div className="banner error" role="alert">{error}</div>}
         {installable && !isStandalone() && (
           <button className="btn" type="button" onClick={() => void promptInstall()}>
             Install IMX app

@@ -28,7 +28,9 @@ export function groupMessages(messages: ChatMessage[]): MessageGroup[] {
 }
 
 export function formatTime(iso: string): string {
+  if (!iso) return '';
   const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return '';
   const now = new Date();
   const sameDay = date.toDateString() === now.toDateString();
   if (sameDay) {

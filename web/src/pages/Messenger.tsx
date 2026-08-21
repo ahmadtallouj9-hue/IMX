@@ -69,6 +69,7 @@ export function Messenger() {
   const scroller = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
   const typingTimer = useRef<number>();
+  const typingAnnounced = useRef(false);
   const imageInput = useRef<HTMLInputElement>(null);
   const videoInput = useRef<HTMLInputElement>(null);
   const recorder = useRef<MediaRecorder | null>(null);
@@ -177,7 +178,7 @@ export function Messenger() {
     };
     const onDeleted = (p: { id: string; conversationId: string }) => {
       if (p.conversationId !== conversationId) return;
-      setMessages((curr) => curr.map((m) => (m.id === p.id ? { ...m, body: null, deletedAt: p.conversationId } : m)));
+      setMessages((curr) => curr.map((m) => (m.id === p.id ? { ...m, body: null, deletedAt: new Date().toISOString() } : m)));
     };
     const onPresence = (p: { userId: string; isOnline: boolean; lastSeenAt?: string | null }) => {
       setPresence((curr) => ({ ...curr, [p.userId]: { isOnline: p.isOnline, lastSeenAt: p.lastSeenAt } }));
@@ -218,8 +219,11 @@ export function Messenger() {
   useEffect(() => {
     if (!conversationId) {
       setMessages([]);
+      setTyping({});
       return;
     }
+    setTyping({});
+    typingAnnounced.current = false;
     joinConversation(conversationId);
     setChatLoading(true);
     setChatError(null);
@@ -485,9 +489,15 @@ export function Messenger() {
     setDraft(value);
     if (!conversationId) return;
     const socket = connectSocket();
-    socket.emit('typing:start', { conversationId });
+    if (!typingAnnounced.current) {
+      typingAnnounced.current = true;
+      socket.emit('typing:start', { conversationId });
+    }
     window.clearTimeout(typingTimer.current);
-    typingTimer.current = window.setTimeout(() => socket.emit('typing:stop', { conversationId }), 1200);
+    typingTimer.current = window.setTimeout(() => {
+      typingAnnounced.current = false;
+      socket.emit('typing:stop', { conversationId });
+    }, 1200);
   }
 
   async function forwardTo(convId: string) {
@@ -757,11 +767,11 @@ export function Messenger() {
                         const quoted = message.replyToId ? messages.find((m) => m.id === message.replyToId) : null;
                         const isDeleted = message.body === null && (message.attachments?.length ?? 0) === 0;
                         return (
-                        <div key={message.id} className={`bubble ${message.type === 'IMAGE' ? 'has-image' : ''} ${message.type === 'AUDIO' ? 'has-audio' : ''} ${message.type === 'VIDEO' ? 'has-video' : ''}`}>
+                        <div id={`msg-${message.id}`} key={message.id} className={`bubble ${message.type === 'IMAGE' ? 'has-image' : ''} ${message.type === 'AUDIO' ? 'has-audio' : ''} ${message.type === 'VIDEO' ? 'has-video' : ''}`}>
                           {message.replyToId && (
                             <button className="quote" type="button" onClick={() => { const el = document.getElementById(`msg-${message.replyToId}`); el?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }}>
-                              <strong>{quoted?.sender.displayName ?? 'Deleted message'}</strong>
-                              <span>{quoted?.body ?? (quoted?.attachments?.length ? '📎 Attachment' : 'Message deleted')}</span>
+                              <strong>{quoted?.sender.displayName ?? 'Original message'}</strong>
+                              <span>{quoted?.body ?? (quoted?.attachments?.length ? '📎 Attachment' : 'Original message')}</span>
                             </button>
                           )}
                           <div className="msg-actions">
@@ -769,7 +779,18 @@ export function Messenger() {
                             {message.sender.id === me.id && !isDeleted && message.body && (
                               <>
                                 <button type="button" title="Edit" aria-label="Edit" onClick={() => { setEditingId(message.id); setDraft(message.body ?? ''); }}><IconEdit /></button>
-                                <button type="button" className="danger" title="Delete" aria-label="Delete" onClick={() => void api.deleteMessage(conversationId!, message.id).then(() => setMessages((curr) => curr.map((m) => (m.id === message.id ? { ...m, body: null } : m))))}><IconTrash /></button>
+                                <button
+                                  type="button"
+                                  className="danger"
+                                  title="Delete"
+                                  aria-label="Delete"
+                                  onClick={() => {
+                                    if (!window.confirm('Delete this message?')) return;
+                                    void api.deleteMessage(conversationId!, message.id)
+                                      .then(() => setMessages((curr) => curr.map((m) => (m.id === message.id ? { ...m, body: null, deletedAt: new Date().toISOString() } : m))))
+                                      .catch((err) => setChatError(err instanceof ApiError ? err.message : 'Could not delete message'));
+                                  }}
+                                ><IconTrash /></button>
                               </>
                             )}
                             <button type="button" title="Forward" aria-label="Forward" onClick={() => setForwardMsg(message)}><IconForward /></button>
@@ -787,8 +808,8 @@ export function Messenger() {
                           {message.attachments?.filter(a => a.kind.toLowerCase().includes('audio')).map(a => (
                             <MsgAudio key={a.id} url={a.url} />
                           ))}
-                          {message.body && <p id={`msg-${message.id}`}>{message.body}{message.edited && <em className="edited-mark"> · edited</em>}</p>}
-                          {!message.body && (message.attachments?.length ?? 0) === 0 && <p id={`msg-${message.id}`} className="deleted">This message was deleted</p>}
+                          {message.body && <p>{message.body}{message.edited && <em className="edited-mark"> · edited</em>}</p>}
+                          {!message.body && (message.attachments?.length ?? 0) === 0 && <p className="deleted">This message was deleted</p>}
                             </>
                           )}
                           {index === group.messages.length - 1 && (
@@ -1158,7 +1179,7 @@ function MsgImage({ url, fileName, onOpen }: { url: string; fileName?: string | 
     setLoaded(false);
   }, [src]);
   if (broken) return <div className="msg-image-fallback">Couldn't load image</div>;
-  if (!src) return <div className="msg-image-fallback">Loading photo…</div>;
+  if (!src) return <div className="msg-image-fallback">Unsupported attachment</div>;
   return (
     <img
       className={`msg-image ${loaded ? 'loaded' : 'loading'}`}
@@ -1174,18 +1195,14 @@ function MsgImage({ url, fileName, onOpen }: { url: string; fileName?: string | 
 
 function MsgAudio({ url }: { url: string }) {
   const src = useMediaSrc(url);
-  if (!src) return <div className="msg-image-fallback">Loading audio…</div>;
+  if (!src) return <div className="msg-image-fallback">Couldn't load audio</div>;
   return <audio controls src={src} className="msg-audio" />;
 }
 
-function MsgVideo({ url, fileName }: { url: string; fileName?: string | null }) {
+function MsgVideo({ url }: { url: string; fileName?: string | null }) {
   const src = useMediaSrc(url);
-  if (!src) return <div className="msg-image-fallback">Loading video…</div>;
-  return (
-    <video className="msg-video" src={src} controls preload="metadata" playsInline>
-      <track kind="captions" />
-    </video>
-  );
+  if (!src) return <div className="msg-image-fallback">Couldn't load video</div>;
+  return <video className="msg-video" src={src} controls preload="metadata" playsInline />;
 }
 
 function iconProps(props?: SVGProps<SVGSVGElement>) {

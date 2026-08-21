@@ -24,7 +24,7 @@ const envSchema = z.object({
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60000),
   AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
   PASSWORD_MIN_LENGTH: z.coerce.number().int().positive().default(8),
-  MAX_UPLOAD_MB: z.coerce.number().positive().default(9999),
+  MAX_UPLOAD_MB: z.coerce.number().positive().default(25),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -42,11 +42,14 @@ const PRIVATE_HOST = /^(localhost|127\.0\.0\.1|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192
 
 export function isAllowedOrigin(origin?: string): boolean {
   if (!origin) return true;
-  if (corsOrigins.includes('*') || corsOrigins.includes(origin)) return true;
+  if (corsOrigins.includes(origin)) return true;
   try {
     const host = new URL(origin).hostname;
+    // Capacitor / Electron local origins
+    if (origin.startsWith('capacitor://') || origin.startsWith('ionic://')) return true;
     if (host === 'localhost' || host === '127.0.0.1') return true;
-    return PRIVATE_HOST.test(host);
+    if (env.NODE_ENV !== 'production' && PRIVATE_HOST.test(host)) return true;
+    return false;
   } catch {
     return false;
   }

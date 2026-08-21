@@ -16,39 +16,39 @@ const DOWNLOAD_HTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>IMX — Download</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Inter',-apple-system,sans-serif;background:#09090b;color:#fff;min-height:100vh;overflow-x:hidden}
+body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:#09090b;color:#fff;min-height:100vh;overflow-x:hidden}
 .bg-glow{position:fixed;top:-200px;left:50%;transform:translateX(-50%);width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(99,102,241,0.15) 0%,transparent 70%);pointer-events:none;z-index:0}
-.container{max-width:520px;margin:0 auto;padding:60px 24px;position:relative;z-index:1;text-align:center}
+.container{max-width:520px;margin:0 auto;padding:clamp(32px,8vw,60px) 20px;position:relative;z-index:1;text-align:center}
 .badge{display:inline-flex;align-items:center;gap:6px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.2);padding:6px 14px;border-radius:100px;font-size:0.8rem;font-weight:500;color:#818cf8;margin-bottom:28px}
 .badge .dot{width:6px;height:6px;background:#34d399;border-radius:50%;animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
 .logo{width:100px;height:100px;border-radius:28px;margin:0 auto 28px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;box-shadow:0 20px 60px rgba(99,102,241,0.3)}
 .logo svg{width:54px;height:54px;fill:#fff}
-h1{font-size:2.8rem;font-weight:900;line-height:1.1;margin-bottom:12px;letter-spacing:-0.03em}
+h1{font-size:clamp(2rem,8vw,2.8rem);font-weight:900;line-height:1.1;margin-bottom:12px;letter-spacing:-0.03em}
 h1 span{background:linear-gradient(135deg,#818cf8,#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.subtitle{font-size:1.1rem;color:#71717a;margin-bottom:40px;line-height:1.5}
+.subtitle{font-size:1.05rem;color:#71717a;margin-bottom:40px;line-height:1.5}
 .features{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:40px}
 .feature{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:20px 12px}
 .feature .icon{font-size:24px;margin-bottom:8px}
 .feature h3{font-size:0.8rem;font-weight:600;margin-bottom:4px}
 .feature p{font-size:0.7rem;color:#71717a;line-height:1.3}
-.download-btn{display:inline-flex;align-items:center;gap:10px;background:linear-gradient(135deg,#6366f1,#7c3aed);color:#fff;text-decoration:none;padding:18px 36px;border-radius:16px;font-size:1rem;font-weight:700;transition:all 0.2s;box-shadow:0 8px 32px rgba(99,102,241,0.35);border:none;cursor:pointer}
+.download-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;background:linear-gradient(135deg,#6366f1,#7c3aed);color:#fff;text-decoration:none;padding:16px 28px;border-radius:16px;font-size:0.95rem;font-weight:700;transition:all 0.2s;box-shadow:0 8px 32px rgba(99,102,241,0.35);border:none;cursor:pointer;min-height:52px;flex:1 1 200px}
 .download-btn:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(99,102,241,0.5)}
 .download-btn:active{transform:translateY(0)}
-.download-btn svg{width:22px;height:22px;fill:#fff}
+.download-btn svg{width:22px;height:22px;fill:#fff;flex-shrink:0}
 .download-btn.android{background:linear-gradient(135deg,#34d399,#059669);box-shadow:0 8px 32px rgba(52,211,153,0.35)}
 .download-btn.android:hover{box-shadow:0 12px 40px rgba(52,211,153,0.5)}
 .download-buttons{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
-.meta{display:flex;align-items:center;justify-content:center;gap:20px;margin-top:20px;color:#52525b;font-size:0.8rem}
+.meta{display:flex;align-items:center;justify-content:center;gap:20px;margin-top:20px;color:#52525b;font-size:0.8rem;flex-wrap:wrap}
 .meta span{display:flex;align-items:center;gap:5px}
-.screenshots{display:flex;gap:12px;margin-top:48px;justify-content:center}
-.phone{width:140px;height:280px;background:#18181b;border-radius:20px;border:2px solid #27272a;overflow:hidden;position:relative}
+.screenshots{display:flex;gap:12px;margin-top:48px;justify-content:center;overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch}
+.phone{width:140px;height:280px;background:#18181b;border-radius:20px;border:2px solid #27272a;overflow:hidden;position:relative;flex:0 0 auto}
 .phone .notch{width:50px;height:6px;background:#27272a;border-radius:10px;margin:8px auto 0}
 .phone .screen{margin:12px 8px;border-radius:12px;height:calc(100% - 30px);display:flex;flex-direction:column;overflow:hidden}
 .phone:nth-child(1) .screen{background:linear-gradient(180deg,#1e1b4b,#0f0f0f)}
@@ -59,6 +59,12 @@ h1 span{background:linear-gradient(135deg,#818cf8,#c084fc);-webkit-background-cl
 .screen-bubble.sent{background:#6366f1;margin-left:auto;color:#fff}
 .screen-bubble.received{background:#27272a}
 .footer{margin-top:60px;color:#3f3f46;font-size:0.75rem}
+@media(max-width:520px){
+.features{grid-template-columns:1fr;gap:8px}
+.feature{display:flex;align-items:center;gap:12px;text-align:left;padding:14px 16px}
+.feature .icon{margin:0;font-size:22px}
+.phone{width:120px;height:240px}
+}
 </style>
 </head>
 <body>
@@ -107,9 +113,11 @@ export function buildApp(): FastifyInstance {
 
   if (env.NODE_ENV === 'production') {
     app.addHook('onRequest', async (req, reply) => {
-      const proto = req.headers['x-forwarded-proto'];
+      const raw = req.headers['x-forwarded-proto'];
+      const proto = typeof raw === 'string' ? raw.split(',')[0].trim() : Array.isArray(raw) ? raw[0] : undefined;
       if (proto && proto !== 'https') {
-        return reply.redirect(301, `https://${req.hostname}${req.url}`);
+        const code = req.method === 'GET' || req.method === 'HEAD' ? 301 : 308;
+        return reply.redirect(code, `https://${req.hostname}${req.url}`);
       }
     });
   }

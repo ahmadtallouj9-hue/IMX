@@ -91,40 +91,55 @@ export function setupSocketIO(app: FastifyInstance): void {
 
     // --- Events ---
 
-    socket.on('message:send', async (data: { conversationId: string; body?: string; clientMessageId?: string; attachments?: Array<{ url: string; kind: string; mimeType?: string; size?: number; fileName?: string; width?: number; height?: number }> }) => {
+    socket.on('message:send', async (data: { conversationId: string; body?: string; clientMessageId?: string; attachments?: Array<{ url: string; kind: string; mimeType?: string; size?: number; fileName?: string }> }) => {
       try {
-        const { conversationId, body, clientMessageId, attachments } = data;
-        if ((!body?.trim()) && (!attachments || attachments.length === 0)) return;
+        const { conversationId, body, clientMessageId } = data;
+        const rawAttachments = Array.isArray(data.attachments) ? data.attachments.slice(0, 8) : [];
+        const attachments = rawAttachments
+          .map((a) => {
+            const path = typeof a.url === 'string' && a.url.includes('/uploads/')
+              ? a.url.slice(a.url.indexOf('/uploads/')).split('?')[0].split('#')[0]
+              : '';
+            if (!/^\/uploads\/[A-Za-z0-9._-]+$/.test(path)) return null;
+            return {
+              url: path,
+              kind: String(a.kind ?? 'file').slice(0, 20),
+              mimeType: a.mimeType,
+              size: a.size,
+              fileName: a.fileName,
+            };
+          })
+          .filter((a): a is NonNullable<typeof a> => a != null);
 
-        // Verify membership
+        const trimmed = body?.trim() ?? '';
+        if ((!trimmed && attachments.length === 0) || trimmed.length > 4000) return;
+
         const membership = await prisma.conversationMember.findUnique({
           where: { conversationId_userId: { conversationId, userId } },
         });
         if (!membership) return;
 
-        const hasAttachments = attachments && attachments.length > 0;
-        const kind = hasAttachments ? attachments![0].kind : null;
+        const hasAttachments = attachments.length > 0;
+        const kind = hasAttachments ? attachments[0].kind : null;
         const messageType = hasAttachments
-          ? kind === 'image' ? 'IMAGE' : kind === 'video' ? 'VIDEO' : 'FILE'
+          ? kind === 'image' ? 'IMAGE' : kind === 'video' ? 'VIDEO' : kind === 'audio' ? 'AUDIO' : 'FILE'
           : 'TEXT';
 
         const message = await prisma.message.create({
           data: {
             conversationId,
             senderId: userId,
-            body: body?.trim() || null,
+            body: trimmed || null,
             type: messageType,
             clientMessageId: clientMessageId ?? null,
             ...(hasAttachments ? {
               attachments: {
-                create: attachments!.map((a) => ({
+                create: attachments.map((a) => ({
                   url: a.url,
                   kind: a.kind,
                   mimeType: a.mimeType ?? null,
                   size: a.size ?? null,
                   fileName: a.fileName ?? null,
-                  width: a.width ?? null,
-                  height: a.height ?? null,
                 })),
               },
             } : {}),
@@ -163,7 +178,6 @@ export function setupSocketIO(app: FastifyInstance): void {
           attachments: message.attachments,
         };
 
-        // Emit to all members in the conversation room
         io.to(`conversation:${conversationId}`).emit('message:new', payload);
       } catch (err) {
         logger.error(err, 'message:send error');
@@ -190,6 +204,11 @@ export function setupSocketIO(app: FastifyInstance): void {
     });
 
     socket.on('typing:stop', async (data: { conversationId: string }) => {
+      if (!data?.conversationId) return;
+      const membership = await prisma.conversationMember.findUnique({
+        where: { conversationId_userId: { conversationId: data.conversationId, userId } },
+      });
+      if (!membership) return;
       socket.to(`conversation:${data.conversationId}`).emit('typing:stop', {
         userId,
         conversationId: data.conversationId,
@@ -198,6 +217,18 @@ export function setupSocketIO(app: FastifyInstance): void {
 
     socket.on('message:read', async (data: { conversationId: string; messageId: string }) => {
       try {
+        if (!data?.conversationId || !data?.messageId) return;
+        const membership = await prisma.conversationMember.findUnique({
+          where: { conversationId_userId: { conversationId: data.conversationId, userId } },
+        });
+        if (!membership) return;
+
+        const message = await prisma.message.findFirst({
+          where: { id: data.messageId, conversationId: data.conversationId },
+          select: { id: true },
+        });
+        if (!message) return;
+
         await prisma.messageRead.upsert({
           where: { messageId_userId: { messageId: data.messageId, userId } },
           update: { readAt: new Date() },

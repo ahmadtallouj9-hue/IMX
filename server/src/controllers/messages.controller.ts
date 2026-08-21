@@ -80,8 +80,7 @@ export class MessagesController {
     const userId = req.authUser!.id;
     const { conversationId } = req.params as { conversationId: string };
     const parsed = sendMessageSchema.parse(req.body ?? {});
-    const { body, clientMessageId, replyToId } = parsed;
-    const attachments = (req.body as { attachments?: Array<{ url: string; kind: string; mimeType?: string; size?: number; fileName?: string; width?: number; height?: number }> })?.attachments;
+    const { body, clientMessageId, replyToId, attachments } = parsed;
 
     if ((!body || body.trim().length === 0) && (!attachments || attachments.length === 0)) {
       throw badRequest('Message body or attachments are required');
@@ -102,6 +101,9 @@ export class MessagesController {
         },
       });
       if (existing) {
+        if (existing.sender.id !== userId || existing.conversationId !== conversationId) {
+          throw badRequest('clientMessageId already used');
+        }
         reply.send({
           message: {
             id: existing.id,
@@ -125,7 +127,7 @@ export class MessagesController {
     const hasAttachments = attachments && attachments.length > 0;
     const kind = hasAttachments ? attachments![0].kind : null;
     const messageType = hasAttachments
-      ? kind === 'image' ? 'IMAGE' : kind === 'video' ? 'VIDEO' : 'FILE'
+      ? kind === 'image' ? 'IMAGE' : kind === 'video' ? 'VIDEO' : kind === 'audio' ? 'AUDIO' : 'FILE'
       : 'TEXT';
 
     const message = await prisma.message.create({
@@ -138,15 +140,16 @@ export class MessagesController {
         replyToId: replyToId ?? null,
         ...(hasAttachments ? {
           attachments: {
-            create: attachments!.map((a) => ({
-              url: a.url,
-              kind: a.kind,
-              mimeType: a.mimeType ?? null,
-              size: a.size ?? null,
-              fileName: a.fileName ?? null,
-              width: a.width ?? null,
-              height: a.height ?? null,
-            })),
+            create: attachments!.map((a) => {
+              const path = a.url.includes('/uploads/') ? a.url.slice(a.url.indexOf('/uploads/')) : a.url;
+              return {
+                url: path.split('?')[0].split('#')[0],
+                kind: a.kind,
+                mimeType: a.mimeType ?? null,
+                size: a.size ?? null,
+                fileName: a.fileName ?? null,
+              };
+            }),
           },
         } : {}),
       },

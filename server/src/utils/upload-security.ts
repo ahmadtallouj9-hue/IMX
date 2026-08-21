@@ -24,9 +24,6 @@ export function sniffImage(buf: Buffer): SniffedImage | null {
 
 export function sniffAudio(buf: Buffer): SniffedImage | null {
   if (buf.length < 4) return null;
-  if (buf.toString('ascii', 0, 4) === 'RIFF' && buf.length > 12 && buf.toString('ascii', 8, 12) === 'WEBP') {
-    return { mime: 'audio/webm', ext: '.webm' };
-  }
   if (buf.toString('ascii', 0, 4) === 'OggS') {
     return { mime: 'audio/ogg', ext: '.ogg' };
   }
@@ -36,26 +33,45 @@ export function sniffAudio(buf: Buffer): SniffedImage | null {
   if (buf.toString('ascii', 0, 4) === 'RIFF' && buf.length > 12 && buf.toString('ascii', 8, 12) === 'WAVE') {
     return { mime: 'audio/wav', ext: '.wav' };
   }
+  if (buf.length >= 12 && buf.toString('ascii', 4, 8) === 'ftyp') {
+    const brand = buf.toString('ascii', 8, 12);
+    if (/^(M4A |mp4a)/i.test(brand)) {
+      return { mime: 'audio/mp4', ext: '.m4a' };
+    }
+  }
+  // EBML WebM — treat audio-only (Opus/Vorbis, no video codec) as audio
+  if (buf[0] === 0x1a && buf[1] === 0x45 && buf[2] === 0xdf && buf[3] === 0xa3) {
+    const head = buf.toString('latin1', 0, Math.min(buf.length, 2048));
+    if (head.includes('webm')) {
+      const hasVideo = /V_VP8|V_VP9|V_AV1|V_MPEG/.test(head);
+      const hasAudio = /A_OPUS|A_VORBIS|OpusHead|vorbis/i.test(head);
+      if (hasAudio && !hasVideo) {
+        return { mime: 'audio/webm', ext: '.webm' };
+      }
+      if (!hasVideo) {
+        return { mime: 'audio/webm', ext: '.webm' };
+      }
+    }
+  }
   return null;
 }
 
 export function sniffVideo(buf: Buffer): SniffedImage | null {
   if (buf.length < 12) return null;
-  // MP4 / MOV / M4V — ISO BMFF "ftyp"
   if (buf.toString('ascii', 4, 8) === 'ftyp') {
     const brand = buf.toString('ascii', 8, 12);
-    if (/^(qt|mp4|M4V|isom|avc1|heic)/i.test(brand)) {
+    if (/^(heic|heif|mif1|M4A |mp4a)/i.test(brand)) {
+      return null;
+    }
+    if (/^(qt|mp4|M4V|isom|avc1)/i.test(brand) || brand.trim().length > 0) {
       return { mime: 'video/mp4', ext: '.mp4' };
     }
-    return { mime: 'video/mp4', ext: '.mp4' };
   }
-  // WebM / MKV — EBML magic 1A 45 DF A3
   if (buf[0] === 0x1a && buf[1] === 0x45 && buf[2] === 0xdf && buf[3] === 0xa3) {
     const str = buf.toString('latin1', 0, Math.min(buf.length, 512));
     if (str.includes('webm')) return { mime: 'video/webm', ext: '.webm' };
     return { mime: 'video/x-matroska', ext: '.mkv' };
   }
-  // AVI — RIFF....AVI
   if (buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'AVI ') {
     return { mime: 'video/x-msvideo', ext: '.avi' };
   }

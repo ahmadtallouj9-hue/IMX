@@ -27,7 +27,13 @@ export const sendMessageSchema = z.object({
   clientMessageId: z.string().min(1).max(80).optional(),
   replyToId: z.string().min(1).max(64).nullable().optional(),
   attachments: z.array(z.object({
-    url: z.string().min(1).max(500),
+    url: z.string().min(1).max(500).refine(
+      (u) => {
+        const path = u.includes('/uploads/') ? u.slice(u.indexOf('/uploads/')) : u;
+        return /^\/uploads\/[A-Za-z0-9._-]+$/.test(path.split('?')[0].split('#')[0]);
+      },
+      { message: 'Attachment URL must be a local upload' },
+    ),
     kind: z.string().min(1).max(20),
     mimeType: z.string().max(80).optional(),
     size: z.number().optional(),

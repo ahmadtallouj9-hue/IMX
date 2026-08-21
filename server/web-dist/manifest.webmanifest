@@ -1,6 +1,6 @@
 {
-  "name": "Chatter",
-  "short_name": "Chatter",
+  "name": "IMX",
+  "short_name": "IMX",
   "description": "Real-time messaging for everyone",
   "start_url": "/",
   "display": "standalone",

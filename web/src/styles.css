@@ -115,7 +115,11 @@ html.light {
 *::before,
 *::after { box-sizing: border-box; }
 
-html, body, #root { height: 100%; margin: 0; }
+html, body, #root {
+  height: 100%;
+  height: 100dvh;
+  margin: 0;
+}
 
 body {
   background: var(--bg);
@@ -127,11 +131,6 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  padding:
-    env(safe-area-inset-top)
-    env(safe-area-inset-right)
-    env(safe-area-inset-bottom)
-    env(safe-area-inset-left);
 }
 
 button, input, textarea {
@@ -836,6 +835,23 @@ html.light .quote { background: rgba(0, 0, 0, 0.05); }
   transform: translateY(0) scale(1);
   pointer-events: auto;
 }
+@media (hover: none) {
+  .msg-actions {
+    position: static;
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+    margin: 0 0 6px;
+    width: fit-content;
+    align-self: flex-start;
+  }
+  .bundle.mine .msg-actions { margin-left: auto; }
+  .msg-actions button {
+    min-width: 40px;
+    min-height: 40px;
+    padding: 8px;
+  }
+}
 .msg-actions button {
   background: none;
   border: none;
@@ -975,6 +991,7 @@ html.light .quote { background: rgba(0, 0, 0, 0.05); }
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   align-items: center;
+  min-width: 0;
 }
 .composer input {
   min-height: 48px;
@@ -982,6 +999,7 @@ html.light .quote { background: rgba(0, 0, 0, 0.05); }
   padding: 12px 18px;
   font-size: 0.95rem;
   flex: 1;
+  min-width: 0;
   background: var(--surface);
 }
 .composer input:focus-visible {
@@ -1138,6 +1156,8 @@ html.light .quote { background: rgba(0, 0, 0, 0.05); }
 }
 .sheet {
   width: min(420px, 100%);
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
   background: var(--bg-2);
   border: 1px solid var(--line);
   border-radius: var(--r-xl);
@@ -1250,10 +1270,23 @@ html, body, .shell, .main, .sidebar, .bubble, .composer, .chat-head {
   .bundle { max-width: 88%; }
   .composer { gap: 6px; padding-left: 12px; padding-right: 12px; }
   .composer .icon-btn { width: 40px; height: 40px; }
+  .composer .btn.primary {
+    min-width: 44px;
+    width: 44px;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 0;
+  }
+  .composer .btn.primary::after {
+    content: "↑";
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
   .messages { padding: 16px 12px 12px; }
   :root { --sidebar-w: 100%; }
 }
 
-@media (max-width: 420px) {
+@media (max-width: 480px) {
+  .composer .icon-btn[aria-label="Search messages"],
   .composer .icon-btn[aria-label="Send video"] { display: none; }
 }
