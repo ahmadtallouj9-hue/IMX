@@ -4,7 +4,7 @@
   "private": true,
   "main": "electron-main.js",
   "scripts": {
-    "start": "node server/dist/src/server.js",
+    "start": "bash start.sh",
     "dev": "echo Run dev:server and dev:web in separate terminals",
     "dev:server": "npm run dev --prefix server",
     "dev:web": "npm run dev --prefix web",
