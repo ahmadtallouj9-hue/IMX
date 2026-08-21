@@ -17,7 +17,7 @@ function MiniAvatar({ user }: { user: { displayName: string; username?: string; 
 
 interface CallOverlayProps {
   callState: CallState;
-  callInfo: { conversationId: string; peerName: string; peerAvatar?: string | null; mode: CallMode } | null;
+  callInfo: { conversationId: string; peerId: string; peerName: string; peerAvatar?: string | null; mode: CallMode } | null;
   localStream: MediaStream | null;
   remoteStream: MediaStream | null;
   muted: boolean;

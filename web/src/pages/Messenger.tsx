@@ -1258,15 +1258,14 @@ export function Messenger() {
         muted={webrtc.muted}
         videoOff={webrtc.videoOff}
         onAccept={() => {
-          const offer = (window as any).__pendingCallOffer;
-          const convId = (window as any).__pendingCallConversationId;
+          const offer = webrtc.pendingOffer.current;
+          const convId = webrtc.pendingConversationId.current;
           if (offer && convId && webrtc.callInfo) {
-            webrtc.acceptCall(convId, webrtc.callInfo.peerName, webrtc.callInfo.peerAvatar, offer, webrtc.callInfo.mode);
+            webrtc.acceptCall(convId, webrtc.callInfo.peerId, webrtc.callInfo.peerName, webrtc.callInfo.peerAvatar, offer, webrtc.callInfo.mode);
           }
         }}
         onReject={() => {
-          const convId = (window as any).__pendingCallConversationId;
-          if (convId) webrtc.rejectCall(convId);
+          if (webrtc.callInfo) webrtc.rejectCall(webrtc.callInfo.conversationId);
         }}
         onEnd={() => {
           if (webrtc.callInfo) webrtc.endCall(webrtc.callInfo.conversationId);
