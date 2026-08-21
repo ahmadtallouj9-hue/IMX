@@ -171,6 +171,7 @@ NODE_ENV=production
 6. **The landing page HTML is embedded in `server/src/app.ts`** as a template string (also exists in `download-site/`)
 7. **Don't add comments** unless asked
 8. **Use existing patterns** — check neighboring files before adding new code
+9. **Android and Windows must look/function identically** — the Android APK is built from the same web/ codebase via Capacitor. If the UIs differ, the APK is outdated and needs rebuilding (cap sync + gradlew assembleDebug). The Windows Electron app also serves the same web/ dist.
 
 ---
 
@@ -182,6 +183,7 @@ NODE_ENV=production
 5. **No email verification** — accounts created without verification
 6. **Landing page not mobile-optimized** — could use responsive improvements
 7. **Download-site and app.ts landing page are duplicated** — should consolidate
+8. **Android vs Windows UI parity** — both must have identical UI. If Android looks different, the APK needs rebuilding with latest web/ code
 
 ---
 
