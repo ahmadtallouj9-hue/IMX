@@ -12,12 +12,9 @@
     "typecheck": "npm run typecheck --prefix server && npm run typecheck --prefix web",
     "build": "npm run build --prefix web && node scripts/copy-web-dist.mjs && cd server && npx prisma generate && npm run build",
     "build:prod": "npm run build --prefix web && node scripts/copy-web-dist.mjs && npm run build --prefix server",
-    "electron:prepare": "node scripts/swap-db-provider.js sqlite && npm run build --prefix web && node scripts/copy-web-dist.mjs && cd server && npm run generate && npm run build",
-    "electron:restore": "node scripts/swap-db-provider.js postgresql && cd server && npm run generate",
-    "icons": "node scripts/generate-icons.mjs",
-    "electron:dev": "npm run electron:prepare && electron . && npm run electron:restore",
-    "electron:build": "npm run electron:prepare && electron-builder --win && npm run electron:restore",
-    "electron:build:portable": "npm run electron:prepare && electron-builder --win portable && npm run electron:restore"
+    "electron:dev": "electron .",
+    "electron:build": "electron-builder --win",
+    "electron:build:portable": "electron-builder --win portable"
   },
   "build": {
     "appId": "com.imx.app",
@@ -26,17 +23,8 @@
       "output": "dist-electron"
     },
     "files": [
-      "electron-main.js",
-      "preload.js",
-      "node_modules/**/*"
+      "electron-main.js"
     ],
-    "extraResources": [
-      {
-        "from": "tools/node.exe",
-        "to": "node.exe"
-      }
-    ],
-    "afterPack": "scripts/after-pack.js",
     "win": {
       "target": [
         "nsis",
