@@ -16,7 +16,7 @@ function createWindow() {
     title: 'IMX'
   });
 
-  mainWindow.loadURL(SERVER_URL);
+  mainWindow.loadURL(`${SERVER_URL}/app`);
 
   mainWindow.on('closed', () => {
     mainWindow = null;

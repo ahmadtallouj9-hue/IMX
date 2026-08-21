@@ -24,8 +24,8 @@ IMX is a real-time messaging app (like WhatsApp/Telegram) with a React web front
 | Realtime | Socket.IO (WebSocket) |
 | Auth | JWT (access + refresh tokens, bcrypt) |
 | Storage | DB driver (`STORAGE_DRIVER=db`) — uploads stored as BYTEA in Postgres |
-| Desktop | Electron (portable .exe, bundled node.exe, SQLite locally) |
-| Mobile | Capacitor (Android APK, connects to Belmo server) |
+| Desktop | Electron (portable .exe, loads Belmo URL directly — no local server) |
+| Mobile | Capacitor (Android APK, loads Belmo URL via Capacitor WebView) |
 | Hosting | Belmo.io (Docker/Nixpacks) |
 
 ---
