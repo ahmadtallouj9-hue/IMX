@@ -653,6 +653,7 @@ html.light .main[data-theme="midnight"] { --mine: #dce6ff; --accent: #4a6fd4; --
 
 .messages {
   flex: 1;
+  min-height: 0;
   overflow: auto;
   padding: var(--s-6) var(--s-5) var(--s-4);
   display: flex;
