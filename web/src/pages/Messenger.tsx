@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState, type SVGProps } from 'react';
+import React, { FormEvent, useCallback, useEffect, useMemo, useRef, useState, type SVGProps } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, ApiError, getApiUrl, setApiUrl, toUploadPath } from '../lib/api';
 import { useMediaSrc } from '../lib/media';
@@ -261,11 +261,21 @@ export function Messenger() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return conversations;
-    return conversations.filter((c) => (c.title ?? '').toLowerCase().includes(q));
-  }, [conversations, query]);
+    let list = q ? conversations.filter((c) => (c.title ?? '').toLowerCase().includes(q)) : conversations;
+    const seen = new Set<string>();
+    return list.filter((c) => {
+      if (c.type !== 'DIRECT') return true;
+      const peerId = c.members.find((m) => m.id !== me.id)?.id;
+      if (!peerId) return true;
+      const key = peerId;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [conversations, query, me.id]);
 
   const groups = useMemo(() => groupMessages(messages), [messages]);
+  const msgMap = useMemo(() => new Map(messages.map((m) => [m.id, m])), [messages]);
   const typingNames = Object.values(typing);
 
   async function openDirect(person: PublicUser) {
@@ -764,7 +774,7 @@ export function Messenger() {
                     <div className="stack">
                       {!mine && <span className="who">{group.sender.displayName}</span>}
                       {group.messages.map((message, index) => {
-                        const quoted = message.replyToId ? messages.find((m) => m.id === message.replyToId) : null;
+                          const quoted = message.replyToId ? msgMap.get(message.replyToId) ?? null : null;
                         const isDeleted = message.body === null && (message.attachments?.length ?? 0) === 0;
                         return (
                         <div id={`msg-${message.id}`} key={message.id} className={`bubble ${message.type === 'IMAGE' ? 'has-image' : ''} ${message.type === 'AUDIO' ? 'has-audio' : ''} ${message.type === 'VIDEO' ? 'has-video' : ''}`}>
@@ -1155,7 +1165,7 @@ export function Messenger() {
   );
 }
 
-function Avatar({ user, online }: { user: PublicUser; online?: boolean }) {
+const Avatar = React.memo(function Avatar({ user, online }: { user: PublicUser; online?: boolean }) {
   const src = useMediaSrc(user.avatarUrl);
   const [broken, setBroken] = useState(false);
   useEffect(() => {
@@ -1170,9 +1180,9 @@ function Avatar({ user, online }: { user: PublicUser; online?: boolean }) {
       )}
     </span>
   );
-}
+});
 
-function MsgImage({ url, fileName, onOpen }: { url: string; fileName?: string | null; onOpen?: (src: string) => void }) {
+const MsgImage = React.memo(function MsgImage({ url, fileName, onOpen }: { url: string; fileName?: string | null; onOpen?: (src: string) => void }) {
   const src = useMediaSrc(url);
   const [broken, setBroken] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -1193,19 +1203,19 @@ function MsgImage({ url, fileName, onOpen }: { url: string; fileName?: string | 
       onError={() => setBroken(true)}
     />
   );
-}
+});
 
-function MsgAudio({ url }: { url: string }) {
+const MsgAudio = React.memo(function MsgAudio({ url }: { url: string }) {
   const src = useMediaSrc(url);
   if (!src) return <div className="msg-image-fallback">Couldn't load audio</div>;
   return <audio controls src={src} className="msg-audio" />;
-}
+});
 
-function MsgVideo({ url }: { url: string; fileName?: string | null }) {
+const MsgVideo = React.memo(function MsgVideo({ url }: { url: string; fileName?: string | null }) {
   const src = useMediaSrc(url);
   if (!src) return <div className="msg-image-fallback">Couldn't load video</div>;
   return <video className="msg-video" src={src} controls preload="metadata" playsInline />;
-}
+});
 
 function iconProps(props?: SVGProps<SVGSVGElement>) {
   return { viewBox: '0 0 24 24', 'aria-hidden': true as const, ...props };
