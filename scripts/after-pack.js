@@ -9,7 +9,7 @@ module.exports = async function(context) {
   
   if (existsSync(serverSrc)) {
     console.log('Copying server to resources...');
-    cpSync(serverSrc, serverDst, { recursive: true, filter: (src) => !src.includes('.git') && !src.includes('chatter.db') });
+    cpSync(serverSrc, serverDst, { recursive: true, filter: (src) => !src.includes('.git') && !src.includes('chatter.db') && !src.endsWith('.env') });
     console.log('Server copied.');
   }
 
