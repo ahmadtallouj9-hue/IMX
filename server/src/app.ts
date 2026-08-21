@@ -72,7 +72,7 @@ h1 span{background:linear-gradient(135deg,#818cf8,#c084fc);-webkit-background-cl
 <div class="feature"><div class="icon">&#x1F465;</div><h3>Friends</h3><p>Find &amp; connect with people</p></div>
 <div class="feature"><div class="icon">&#x1F512;</div><h3>Secure</h3><p>Private &amp; encrypted sessions</p></div>
 </div>
-<a href="/download" class="download-btn" download>
+<a href="https://ahmadtallouj9-hue.itch.io/imx" class="download-btn" target="_blank">
 <svg viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/></svg>
 Download for Android
 </a>
