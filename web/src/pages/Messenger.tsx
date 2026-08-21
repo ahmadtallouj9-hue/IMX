@@ -833,61 +833,62 @@ export function Messenger() {
                 </div>
               )}
             </div>
-            {emojiOpen && (
-              <div className="emoji-grid">
-                {EMOJIS.map((e) => (
-                  <button key={e} type="button" className="emoji-btn" onClick={() => { setDraft((d) => d + e); setEmojiOpen(false); }}>
-                    {e}
+            <div className="chat-bottom">
+              {emojiOpen && (
+                <div className="emoji-grid">
+                  {EMOJIS.map((e) => (
+                    <button key={e} type="button" className="emoji-btn" onClick={() => { setDraft((d) => d + e); setEmojiOpen(false); }}>
+                      {e}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {searchOpen && (
+                <div className="msg-search">
+                  <input
+                    value={searchQuery}
+                    onChange={(e) => void doSearch(e.target.value)}
+                    placeholder="Search in this chat…"
+                    autoFocus
+                  />
+                  {searching && <small>Searching…</small>}
+                  {searchResults.length > 0 && (
+                    <div className="search-results">
+                      {searchResults.map((m) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => { document.getElementById(`msg-${m.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }}
+                        >
+                          <strong>{m.sender.displayName}</strong>
+                          <span>{m.body ?? (m.type === 'IMAGE' ? '📷 Photo' : m.type === 'VIDEO' ? '🎬 Video' : m.type === 'AUDIO' ? '🎤 Voice' : 'Attachment')}</span>
+                          <small>{formatTime(m.createdAt)}</small>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {!searching && searchQuery.trim().length >= 2 && searchResults.length === 0 && (
+                    <small>No matches</small>
+                  )}
+                  <button className="icon-btn" type="button" aria-label="Close search" onClick={() => { setSearchOpen(false); setSearchResults([]); setSearchQuery(''); }}>
+                    <IconClose />
                   </button>
-                ))}
-              </div>
-            )}
-            {searchOpen && (
-              <div className="msg-search">
-                <input
-                  value={searchQuery}
-                  onChange={(e) => void doSearch(e.target.value)}
-                  placeholder="Search in this chat…"
-                  autoFocus
-                />
-                {searching && <small>Searching…</small>}
-                {searchResults.length > 0 && (
-                  <div className="search-results">
-                    {searchResults.map((m) => (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => { document.getElementById(`msg-${m.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }}
-                      >
-                        <strong>{m.sender.displayName}</strong>
-                        <span>{m.body ?? (m.type === 'IMAGE' ? '📷 Photo' : m.type === 'VIDEO' ? '🎬 Video' : m.type === 'AUDIO' ? '🎤 Voice' : 'Attachment')}</span>
-                        <small>{formatTime(m.createdAt)}</small>
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {!searching && searchQuery.trim().length >= 2 && searchResults.length === 0 && (
-                  <small>No matches</small>
-                )}
-                <button className="icon-btn" type="button" aria-label="Close search" onClick={() => { setSearchOpen(false); setSearchResults([]); setSearchQuery(''); }}>
-                  <IconClose />
-                </button>
-              </div>
-            )}
-            {(replyTo || editingId) && (
-              <div className="reply-bar">
-                {editingId ? (
-                  <span>Editing message…</span>
-                ) : (
-                  <span>
-                    Replying to <strong>{replyTo?.sender.displayName}</strong>: {replyTo?.body ?? (replyTo?.attachments?.length ? '📎 Attachment' : '')}
-                  </span>
-                )}
-                <button className="icon-btn" type="button" aria-label="Cancel" onClick={() => { setReplyTo(null); setEditingId(null); if (editingId) setDraft(''); }}>
-                  <IconClose />
-                </button>
-              </div>
-            )}
+                </div>
+              )}
+              {(replyTo || editingId) && (
+                <div className="reply-bar">
+                  {editingId ? (
+                    <span>Editing message…</span>
+                  ) : (
+                    <span>
+                      Replying to <strong>{replyTo?.sender.displayName}</strong>: {replyTo?.body ?? (replyTo?.attachments?.length ? '📎 Attachment' : '')}
+                    </span>
+                  )}
+                  <button className="icon-btn" type="button" aria-label="Cancel" onClick={() => { setReplyTo(null); setEditingId(null); if (editingId) setDraft(''); }}>
+                    <IconClose />
+                  </button>
+                </div>
+              )}
             <form className="composer" onSubmit={(e) => void send(e)}>
               <button
                 className={`icon-btn ${searchOpen ? 'active' : ''}`}
@@ -964,6 +965,7 @@ export function Messenger() {
                 Send
               </button>
             </form>
+            </div>
           </>
         )}
       </main>

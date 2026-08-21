@@ -984,7 +984,10 @@ html.light .quote { background: rgba(0, 0, 0, 0.05); }
   30% { opacity: 1; transform: translateY(-3px); }
 }
 
-/* Composer */
+/* Chat bottom panel */
+.chat-bottom {
+  flex-shrink: 0;
+}
 .composer {
   display: flex;
   gap: 8px;
