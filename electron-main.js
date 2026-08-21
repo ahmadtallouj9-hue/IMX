@@ -1,9 +1,20 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow } = require('electron');
 const path = require('path');
-const { spawn } = require('child_process');
+const { fork } = require('child_process');
 
 let mainWindow;
 let serverProcess;
+
+function isPackaged() {
+  return !process.argv[0].endsWith('node');
+}
+
+function appRoot() {
+  if (isPackaged()) {
+    return process.resourcesPath;
+  }
+  return __dirname;
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -40,6 +51,9 @@ function waitForServer(url, timeout = 30000) {
   });
 }
 
+const root = appRoot();
+const serverCwd = path.join(root, 'server');
+
 const serverEnv = {
   ...process.env,
   NODE_ENV: 'production',
@@ -49,37 +63,43 @@ const serverEnv = {
   JWT_REFRESH_SECRET: 'electron-jwt-refresh-secret-minimum-32-chars',
   CORS_ORIGIN: 'http://localhost:8080',
   STORAGE_DRIVER: 'local',
-  STORAGE_LOCAL_DIR: path.join(__dirname, 'uploads')
+  STORAGE_LOCAL_DIR: path.join(root, 'uploads')
 };
 
 function runMigrate() {
-  const prismaPath = path.join(__dirname, 'server', 'node_modules', '.bin', 'prisma');
-  const schemaPath = path.join(__dirname, 'server', 'prisma', 'schema.prisma');
+  const prismaBin = process.platform === 'win32' ? 'prisma.cmd' : 'prisma';
+  const prismaPath = path.join(serverCwd, 'node_modules', '.bin', prismaBin);
+  const schemaPath = path.join(serverCwd, 'prisma', 'schema.prisma');
   return new Promise((resolve, reject) => {
-    const proc = spawn(
-      process.platform === 'win32' ? prismaPath + '.cmd' : prismaPath,
-      ['db', 'push', '--schema', schemaPath, '--accept-data-loss'],
-      { cwd: path.join(__dirname, 'server'), env: serverEnv }
-    );
-    proc.stdout.on('data', (d) => console.log(d.toString()));
-    proc.stderr.on('data', (d) => console.error(d.toString()));
+    const proc = fork(prismaPath, ['db', 'push', '--schema', schemaPath, '--accept-data-loss'], {
+      cwd: serverCwd,
+      env: serverEnv,
+      stdio: 'pipe'
+    });
+    proc.stdout?.on('data', (d) => console.log(d.toString()));
+    proc.stderr?.on('data', (d) => console.error(d.toString()));
     proc.on('close', (code) => code === 0 ? resolve() : reject(new Error(`prisma migrate exited ${code}`)));
   });
 }
 
 function startServer() {
-  const serverPath = path.join(__dirname, 'server', 'dist', 'src', 'server.js');
-  serverProcess = spawn('node', [serverPath], {
-    cwd: path.join(__dirname, 'server'),
-    env: serverEnv
+  const serverPath = path.join(serverCwd, 'dist', 'src', 'server.js');
+  serverProcess = fork(serverPath, [], {
+    cwd: serverCwd,
+    env: serverEnv,
+    stdio: 'pipe'
   });
 
-  serverProcess.stdout.on('data', (data) => {
+  serverProcess.stdout?.on('data', (data) => {
     console.log(`Server: ${data}`);
   });
 
-  serverProcess.stderr.on('data', (data) => {
+  serverProcess.stderr?.on('data', (data) => {
     console.error(`Server Error: ${data}`);
+  });
+
+  serverProcess.on('error', (err) => {
+    console.error('Server process error:', err.message);
   });
 }
 
