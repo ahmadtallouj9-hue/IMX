@@ -3,7 +3,7 @@ import type { ChatMessage, Conversation, PublicUser } from './types';
 const TOKEN_KEY = 'cove.accessToken';
 const REFRESH_KEY = 'cove.refreshToken';
 const API_KEY = 'cove.apiUrl';
-const DEFAULT_NATIVE_API = 'https://chatter-api-production-af6b.up.railway.app';
+const DEFAULT_NATIVE_API = 'https://imx-cbf0.onbelmo.uk';
 
 export function getApiUrl(): string {
   try {
