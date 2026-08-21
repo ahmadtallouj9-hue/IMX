@@ -34,6 +34,12 @@
     "asarUnpack": [
       "server/**/*"
     ],
+    "extraResources": [
+      {
+        "from": "tools/node.exe",
+        "to": "node.exe"
+      }
+    ],
     "win": {
       "target": [
         "nsis",

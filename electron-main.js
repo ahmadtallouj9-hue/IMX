@@ -1,19 +1,22 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
-const { fork } = require('child_process');
+const { spawn } = require('child_process');
 
 let mainWindow;
 let serverProcess;
 
-function isPackaged() {
-  return !process.argv[0].endsWith('node');
+function getNodePath() {
+  if (process.env.NODE_ENV === 'development' || !app.isPackaged) {
+    return 'node';
+  }
+  return path.join(process.resourcesPath, 'node.exe');
 }
 
-function appRoot() {
-  if (isPackaged()) {
-    return process.resourcesPath;
+function getServerRoot() {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, 'app.asar.unpacked', 'server');
   }
-  return __dirname;
+  return path.join(__dirname, 'server');
 }
 
 function createWindow() {
@@ -51,8 +54,8 @@ function waitForServer(url, timeout = 30000) {
   });
 }
 
-const root = appRoot();
-const serverCwd = path.join(root, 'server');
+const nodeExe = getNodePath();
+const serverRoot = getServerRoot();
 
 const serverEnv = {
   ...process.env,
@@ -63,16 +66,15 @@ const serverEnv = {
   JWT_REFRESH_SECRET: 'electron-jwt-refresh-secret-minimum-32-chars',
   CORS_ORIGIN: 'http://localhost:8080',
   STORAGE_DRIVER: 'local',
-  STORAGE_LOCAL_DIR: path.join(root, 'uploads')
+  STORAGE_LOCAL_DIR: path.join(serverRoot, '..', 'uploads')
 };
 
 function runMigrate() {
-  const prismaBin = process.platform === 'win32' ? 'prisma.cmd' : 'prisma';
-  const prismaPath = path.join(serverCwd, 'node_modules', '.bin', prismaBin);
-  const schemaPath = path.join(serverCwd, 'prisma', 'schema.prisma');
+  const prismaScript = path.join(serverRoot, 'node_modules', 'prisma', 'build', 'index.js');
+  const schemaPath = path.join(serverRoot, 'prisma', 'schema.prisma');
   return new Promise((resolve, reject) => {
-    const proc = fork(prismaPath, ['db', 'push', '--schema', schemaPath, '--accept-data-loss'], {
-      cwd: serverCwd,
+    const proc = spawn(nodeExe, [prismaScript, 'db', 'push', '--schema', schemaPath, '--accept-data-loss'], {
+      cwd: serverRoot,
       env: serverEnv,
       stdio: 'pipe'
     });
@@ -83,9 +85,9 @@ function runMigrate() {
 }
 
 function startServer() {
-  const serverPath = path.join(serverCwd, 'dist', 'src', 'server.js');
-  serverProcess = fork(serverPath, [], {
-    cwd: serverCwd,
+  const serverPath = path.join(serverRoot, 'dist', 'src', 'server.js');
+  serverProcess = spawn(nodeExe, [serverPath], {
+    cwd: serverRoot,
     env: serverEnv,
     stdio: 'pipe'
   });
