@@ -219,13 +219,13 @@ export function buildApp(): FastifyInstance {
   });
 
   // --- APK download ---
-  const apkPath = join(uploadsDir, 'chatter.apk');
+  const apkPath = join(uploadsDir, 'imx.apk');
   app.get('/download', async (_req, reply) => {
     if (!existsSync(apkPath)) {
       return reply.code(404).send({ error: 'APK not found' });
     }
     reply.header('Content-Type', 'application/vnd.android.package-archive');
-    reply.header('Content-Disposition', 'attachment; filename="chatter.apk"');
+    reply.header('Content-Disposition', 'attachment; filename="imx.apk"');
     return reply.send(createReadStream(apkPath));
   });
 

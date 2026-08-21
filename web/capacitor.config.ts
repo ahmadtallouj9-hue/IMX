@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.chatter.chat',
+  appId: 'app.imx.chat',
   appName: 'IMX',
   webDir: 'dist',
   server: {

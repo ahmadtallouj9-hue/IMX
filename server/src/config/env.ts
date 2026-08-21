@@ -6,7 +6,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(8080),
   HOST: z.string().default('0.0.0.0'),
   CORS_ORIGIN: z.string().default('http://localhost:5173,http://localhost:3000'),
-  DATABASE_URL: z.string().min(1).default('postgresql://chatter:chatter@localhost:5432/chatter?schema=public'),
+  DATABASE_URL: z.string().min(1).default('postgresql://imx:imx@localhost:5432/imx?schema=public'),
   REDIS_URL: z.string().optional(),
   JWT_SECRET: z.string().min(16),
   JWT_REFRESH_SECRET: z.string().min(16),

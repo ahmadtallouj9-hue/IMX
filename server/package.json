@@ -1,5 +1,5 @@
 {
-  "name": "chatter-server",
+  "name": "imx-server",
   "version": "0.1.0",
   "description": "IMX backend — Fastify + Socket.IO + Prisma API",
   "private": true,
