@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#0f1419" />
-  <meta name="description" content="Download IMX for Android and Windows — real-time messaging, friends, and private chats." />
+  <meta name="description" content="Download IMX for Android and Windows — real-time messaging, friends, calls, and private chats." />
   <title>IMX — Download</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -17,14 +17,16 @@
       --line: rgba(255,255,255,0.08);
       --text: #f4f6f8;
       --muted: #9aa3af;
+      --muted-2: #6b7380;
       --accent: #e85d04;
       --accent-soft: rgba(232, 93, 4, 0.16);
       --android: #2ea44f;
       --shadow: 0 24px 80px rgba(0,0,0,0.45);
       --font: 'Sora', system-ui, sans-serif;
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { min-height: 100%; }
+    html { scroll-behavior: smooth; }
     body {
       font-family: var(--font);
       background: var(--bg);
@@ -32,41 +34,47 @@
       line-height: 1.5;
       overflow-x: hidden;
     }
-    .stage {
+    .page {
       position: relative;
       min-height: 100dvh;
-      display: grid;
-      place-items: center;
-      padding: clamp(24px, 5vw, 48px) 20px;
+      padding: clamp(24px, 4vw, 48px) 20px 48px;
     }
     .glow {
-      position: absolute; inset: 0; pointer-events: none;
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
       background:
-        radial-gradient(60% 45% at 15% 10%, rgba(232,93,4,0.22), transparent 55%),
-        radial-gradient(50% 40% at 90% 80%, rgba(46,164,79,0.12), transparent 50%),
-        linear-gradient(180deg, #121820 0%, var(--bg) 55%);
+        radial-gradient(55% 40% at 12% 8%, rgba(232,93,4,0.22), transparent 55%),
+        radial-gradient(45% 35% at 88% 70%, rgba(46,164,79,0.1), transparent 50%),
+        linear-gradient(180deg, #121820 0%, var(--bg) 50%);
     }
     .grid {
-      position: absolute; inset: 0; opacity: 0.25; pointer-events: none;
+      position: fixed; inset: 0; opacity: 0.22; pointer-events: none; z-index: 0;
       background-image:
         linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
         linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
       background-size: 48px 48px;
-      mask-image: radial-gradient(circle at 40% 30%, #000 15%, transparent 70%);
+      mask-image: radial-gradient(circle at 35% 25%, #000 12%, transparent 68%);
     }
-    .card {
+    .wrap {
       position: relative; z-index: 1;
-      width: min(720px, 100%);
+      width: min(980px, 100%);
+      margin: 0 auto;
+      display: grid; gap: 28px;
+    }
+    .hero {
       background: color-mix(in srgb, var(--bg-2) 92%, transparent);
       border: 1px solid var(--line);
       border-radius: 32px;
-      padding: clamp(28px, 5vw, 44px);
+      padding: clamp(28px, 4vw, 44px);
       box-shadow: var(--shadow);
       backdrop-filter: blur(18px);
-      animation: rise 0.55s ease both;
+      animation: rise 0.6s var(--ease) both;
     }
     @keyframes rise {
-      from { opacity: 0; transform: translateY(14px); }
+      from { opacity: 0; transform: translateY(18px); }
+      to { opacity: 1; transform: none; }
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
       to { opacity: 1; transform: none; }
     }
     .brand-row {
@@ -76,10 +84,13 @@
       width: 44px; height: 44px; border-radius: 14px;
       background: linear-gradient(145deg, #ff7a2f, var(--accent));
       box-shadow: 0 10px 28px rgba(232,93,4,0.35);
+      animation: pulseGlow 2.8s ease-in-out infinite;
     }
-    .brand-name {
-      font-size: 1.1rem; font-weight: 800; letter-spacing: -0.03em;
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 10px 28px rgba(232,93,4,0.35); }
+      50% { box-shadow: 0 12px 36px rgba(232,93,4,0.55); }
     }
+    .brand-name { font-size: 1.1rem; font-weight: 800; letter-spacing: -0.03em; }
     .live {
       margin-left: auto;
       display: inline-flex; align-items: center; gap: 8px;
@@ -95,25 +106,31 @@
       0%, 100% { opacity: 1; }
       50% { opacity: 0.35; }
     }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 28px;
+      align-items: end;
+    }
     .hero-brand {
-      font-size: clamp(3.6rem, 14vw, 6.5rem);
+      font-size: clamp(3.8rem, 12vw, 6.8rem);
       font-weight: 800;
       letter-spacing: -0.07em;
       line-height: 0.88;
       margin: 0 0 14px;
     }
     .lead {
-      max-width: 34ch;
+      max-width: 32ch;
       color: var(--muted);
-      font-size: 1.1rem;
+      font-size: 1.12rem;
       font-weight: 500;
-      margin-bottom: 28px;
+      margin-bottom: 26px;
     }
     .downloads {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 12px;
-      margin-bottom: 18px;
+      margin-bottom: 16px;
     }
     .dl {
       display: flex; flex-direction: column; gap: 10px;
@@ -124,98 +141,355 @@
       background: var(--surface);
       color: inherit;
       text-decoration: none;
-      transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+      transition: transform 0.2s var(--ease), border-color 0.2s ease, background 0.2s ease;
     }
     .dl:hover {
-      transform: translateY(-2px);
+      transform: translateY(-3px);
       border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
       background: color-mix(in srgb, var(--surface) 80%, var(--accent-soft));
     }
-    .dl-top {
-      display: flex; align-items: center; justify-content: space-between; gap: 10px;
-    }
+    .dl.android:hover { border-color: color-mix(in srgb, var(--android) 55%, var(--line)); }
     .dl-icon {
       width: 42px; height: 42px; border-radius: 14px;
       display: grid; place-items: center;
-      background: var(--accent);
-      color: #fff;
+      background: var(--accent); color: #fff;
     }
     .dl.android .dl-icon { background: var(--android); }
     .dl-icon svg { width: 22px; height: 22px; fill: currentColor; }
     .dl strong { display: block; font-size: 1rem; font-weight: 700; }
     .dl small { color: var(--muted); font-size: 0.8rem; }
-    .dl-cta {
-      margin-top: 4px;
-      font-size: 0.82rem; font-weight: 700; color: var(--accent);
-    }
+    .dl-cta { margin-top: 4px; font-size: 0.82rem; font-weight: 700; color: var(--accent); }
     .dl.android .dl-cta { color: #6ee7a0; }
     .meta {
       display: flex; flex-wrap: wrap; gap: 10px 16px;
-      color: var(--muted); font-size: 0.8rem; margin-bottom: 28px;
+      color: var(--muted); font-size: 0.8rem; margin-bottom: 18px;
     }
     .web-link {
       display: inline-flex; align-items: center; gap: 8px;
       color: var(--text); font-weight: 650; text-decoration: none;
       padding: 12px 16px; border-radius: 14px;
       border: 1px solid var(--line); background: transparent;
+      transition: border-color 0.18s ease, color 0.18s ease;
     }
     .web-link:hover { border-color: var(--accent); color: #ffb077; }
+
+    .phones {
+      display: flex; justify-content: center; gap: 14px;
+      animation: fadeUp 0.7s var(--ease) 0.12s both;
+    }
+    .phone {
+      width: 148px; height: 292px;
+      border-radius: 28px;
+      border: 2px solid #2a3340;
+      background: #12171e;
+      overflow: hidden;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.35);
+      transform: rotate(-4deg);
+    }
+    .phone:nth-child(2) { transform: rotate(3deg) translateY(10px); }
+    .phone .notch {
+      width: 54px; height: 7px; margin: 10px auto 0;
+      border-radius: 999px; background: #2a3340;
+    }
+    .screen {
+      margin: 12px 10px 10px;
+      height: calc(100% - 36px);
+      border-radius: 18px;
+      padding: 12px 10px;
+      display: flex; flex-direction: column; gap: 8px;
+      background: linear-gradient(180deg, #1a222c, #12171e);
+    }
+    .screen h4 {
+      font-size: 0.68rem; letter-spacing: 0.04em;
+      text-transform: uppercase; color: var(--muted-2);
+    }
+    .bubble {
+      max-width: 88%;
+      padding: 8px 10px;
+      border-radius: 14px;
+      font-size: 0.58rem;
+      line-height: 1.35;
+      color: #d7dde6;
+      background: #263040;
+    }
+    .bubble.me {
+      margin-left: auto;
+      background: var(--accent);
+      color: #fff;
+    }
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 9px; border-radius: 12px;
+      background: #243040; font-size: 0.58rem; color: #c9d1db;
+    }
+    .chip b {
+      width: 16px; height: 16px; border-radius: 50%;
+      background: var(--accent); display: inline-grid; place-items: center;
+      font-size: 0.5rem; color: #fff;
+    }
+
+    .panel {
+      background: color-mix(in srgb, var(--bg-2) 90%, transparent);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      padding: clamp(22px, 3vw, 32px);
+      animation: fadeUp 0.65s var(--ease) both;
+    }
+    .panel:nth-of-type(1) { animation-delay: 0.08s; }
+    .panel:nth-of-type(2) { animation-delay: 0.14s; }
+    .panel:nth-of-type(3) { animation-delay: 0.2s; }
+    .kicker {
+      margin: 0 0 8px;
+      text-transform: uppercase; letter-spacing: 0.12em;
+      font-size: 0.72rem; font-weight: 700; color: var(--muted);
+    }
+    .panel h2 {
+      margin: 0 0 8px;
+      font-size: clamp(1.4rem, 3vw, 1.85rem);
+      letter-spacing: -0.03em;
+    }
+    .panel > p {
+      color: var(--muted); max-width: 48ch; margin-bottom: 20px;
+    }
+    .features {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .feature {
+      padding: 16px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+    }
+    .feature .ico {
+      width: 36px; height: 36px; border-radius: 12px;
+      display: grid; place-items: center; margin-bottom: 12px;
+      background: var(--accent-soft); color: #ffb077;
+    }
+    .feature .ico svg {
+      width: 18px; height: 18px; stroke: currentColor; fill: none;
+      stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+    }
+    .feature strong { display: block; margin-bottom: 4px; font-size: 0.95rem; }
+    .feature span { color: var(--muted); font-size: 0.82rem; }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      counter-reset: step;
+    }
+    .step {
+      position: relative;
+      padding: 18px 16px 16px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+    }
+    .step::before {
+      counter-increment: step;
+      content: counter(step);
+      display: inline-grid; place-items: center;
+      width: 28px; height: 28px; border-radius: 999px;
+      margin-bottom: 12px;
+      background: var(--accent); color: #fff;
+      font-size: 0.8rem; font-weight: 750;
+    }
+    .step strong { display: block; margin-bottom: 4px; }
+    .step span { color: var(--muted); font-size: 0.84rem; }
+
+    .faq { display: grid; gap: 10px; }
+    details {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--surface);
+      padding: 14px 16px;
+    }
+    summary {
+      cursor: pointer; font-weight: 650; list-style: none;
+      display: flex; justify-content: space-between; gap: 12px;
+    }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: "+"; color: var(--muted); font-weight: 700; }
+    details[open] summary::after { content: "–"; }
+    details p {
+      margin-top: 10px; color: var(--muted); font-size: 0.9rem;
+    }
+
+    .foot {
+      display: flex; flex-wrap: wrap; gap: 12px;
+      align-items: center; justify-content: space-between;
+      color: var(--muted-2); font-size: 0.8rem;
+      padding: 4px 4px 8px;
+    }
+    .foot a { color: #ffb077; text-decoration: none; font-weight: 600; }
+
+    @media (max-width: 860px) {
+      .hero-grid { grid-template-columns: 1fr; }
+      .phones { order: -1; margin-bottom: 8px; }
+      .features, .steps { grid-template-columns: 1fr; }
+    }
     @media (max-width: 640px) {
       .downloads { grid-template-columns: 1fr; }
       .brand-row { flex-wrap: wrap; }
       .live { margin-left: 0; }
+      .phone { width: 126px; height: 250px; }
     }
   </style>
 </head>
 <body>
-  <div class="stage">
+  <div class="page">
     <div class="glow" aria-hidden="true"></div>
     <div class="grid" aria-hidden="true"></div>
-    <main class="card">
-      <div class="brand-row">
-        <span class="mark" aria-hidden="true"></span>
-        <span class="brand-name">IMX</span>
-        <span class="live"><i></i> Free to download</span>
-      </div>
 
-      <h1 class="hero-brand">IMX</h1>
-      <p class="lead">Quiet chats. Fast replies. Grab the app for your phone or PC.</p>
+    <div class="wrap">
+      <main class="hero">
+        <div class="brand-row">
+          <span class="mark" aria-hidden="true"></span>
+          <span class="brand-name">IMX</span>
+          <span class="live"><i></i> Free to download</span>
+        </div>
 
-      <div class="downloads">
-        <a class="dl android" href="https://imx-cbf0.onbelmo.uk/download/android" download="imx.apk">
-          <div class="dl-top">
-            <span class="dl-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M17.523 15.34a1.08 1.08 0 01-1.08-1.08V9.74a1.08 1.08 0 112.16 0v4.52c0 .597-.483 1.08-1.08 1.08zm-11.046 0a1.08 1.08 0 01-1.08-1.08V9.74a1.08 1.08 0 112.16 0v4.52c0 .597-.483 1.08-1.08 1.08zM7.05 5.2l-.95-1.64a.45.45 0 01.16-.61.45.45 0 01.62.15l.98 1.7A7.8 7.8 0 0112 4.2c1.42 0 2.76.37 3.94 1.02l.98-1.7a.45.45 0 01.62-.15c.22.13.3.41.15.62l-.95 1.64A7.86 7.86 0 0119.9 12v5.4c0 .88-.72 1.6-1.6 1.6H5.7c-.88 0-1.6-.72-1.6-1.6V12c0-2.7 1.36-5.08 3.45-6.5zM9.2 20.2a.8.8 0 01-.8-.8v-1.2h1.6v1.2c0 .44-.36.8-.8.8zm5.6 0a.8.8 0 01-.8-.8v-1.2h1.6v1.2c0 .44-.36.8-.8.8z"/></svg>
-            </span>
-          </div>
+        <div class="hero-grid">
           <div>
-            <strong>Android APK</strong>
-            <small>Install from IMX</small>
-          </div>
-          <span class="dl-cta">Download APK →</span>
-        </a>
+            <h1 class="hero-brand">IMX</h1>
+            <p class="lead">Quiet chats. Fast replies. Grab the app for your phone or PC.</p>
 
-        <a class="dl" href="https://imx-cbf0.onbelmo.uk/download/windows" download="imx-windows.zip">
-          <div class="dl-top">
-            <span class="dl-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M3 5.5l7.5-1.05V11H3V5.5zm8.5-1.2L21 3v8H11.5V4.3zM3 12.5h7.5V19.6L3 18.5v-6zm8.5 0H21V21l-9.5-1.35V12.5z"/></svg>
-            </span>
-          </div>
-          <div>
-            <strong>Windows</strong>
-            <small>Portable app from IMX</small>
-          </div>
-          <span class="dl-cta">Download for Windows →</span>
-        </a>
-      </div>
+            <div class="downloads">
+              <a class="dl android" href="https://imx-cbf0.onbelmo.uk/download/android" download="imx.apk">
+                <span class="dl-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M17.523 15.34a1.08 1.08 0 01-1.08-1.08V9.74a1.08 1.08 0 112.16 0v4.52c0 .597-.483 1.08-1.08 1.08zm-11.046 0a1.08 1.08 0 01-1.08-1.08V9.74a1.08 1.08 0 112.16 0v4.52c0 .597-.483 1.08-1.08 1.08zM7.05 5.2l-.95-1.64a.45.45 0 01.16-.61.45.45 0 01.62.15l.98 1.7A7.8 7.8 0 0112 4.2c1.42 0 2.76.37 3.94 1.02l.98-1.7a.45.45 0 01.62-.15c.22.13.3.41.15.62l-.95 1.64A7.86 7.86 0 0119.9 12v5.4c0 .88-.72 1.6-1.6 1.6H5.7c-.88 0-1.6-.72-1.6-1.6V12c0-2.7 1.36-5.08 3.45-6.5zM9.2 20.2a.8.8 0 01-.8-.8v-1.2h1.6v1.2c0 .44-.36.8-.8.8zm5.6 0a.8.8 0 01-.8-.8v-1.2h1.6v1.2c0 .44-.36.8-.8.8z"/></svg>
+                </span>
+                <div>
+                  <strong>Android APK</strong>
+                  <small>Install from IMX</small>
+                </div>
+                <span class="dl-cta">Download APK →</span>
+              </a>
 
-      <div class="meta">
-        <span>v1.0 · Hosted on IMX</span>
-        <span>HTTPS · private sessions</span>
-      </div>
+              <a class="dl" href="https://imx-cbf0.onbelmo.uk/download/windows" download="imx-windows.zip">
+                <span class="dl-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M3 5.5l7.5-1.05V11H3V5.5zm8.5-1.2L21 3v8H11.5V4.3zM3 12.5h7.5V19.6L3 18.5v-6zm8.5 0H21V21l-9.5-1.35V12.5z"/></svg>
+                </span>
+                <div>
+                  <strong>Windows</strong>
+                  <small>Portable app from IMX</small>
+                </div>
+                <span class="dl-cta">Download for Windows →</span>
+              </a>
+            </div>
 
-      <a class="web-link" href="https://imx-cbf0.onbelmo.uk/">Open IMX in browser</a>
-    </main>
+            <div class="meta">
+              <span>v1.0 · Hosted on IMX</span>
+              <span>HTTPS · private sessions</span>
+            </div>
+
+            <a class="web-link" href="https://imx-cbf0.onbelmo.uk/">Open IMX in browser</a>
+          </div>
+
+          <div class="phones" aria-hidden="true">
+            <div class="phone">
+              <div class="notch"></div>
+              <div class="screen">
+                <h4>Messages</h4>
+                <div class="bubble">Are you free tonight?</div>
+                <div class="bubble me">Yeah — what's the plan?</div>
+                <div class="bubble">Dinner at 7?</div>
+                <div class="bubble me">Perfect.</div>
+              </div>
+            </div>
+            <div class="phone">
+              <div class="notch"></div>
+              <div class="screen">
+                <h4>Friends</h4>
+                <div class="chip"><b>A</b> Ahmad · online</div>
+                <div class="chip"><b>S</b> Sara · online</div>
+                <div class="chip"><b>M</b> Mike · 2h ago</div>
+                <div class="bubble me" style="margin-top:auto">Find people →</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <section class="panel">
+        <p class="kicker">Why IMX</p>
+        <h2>Built for everyday chats</h2>
+        <p>Fast messaging with the extras you actually use — without the noise.</p>
+        <div class="features">
+          <article class="feature">
+            <div class="ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <strong>Live messaging</strong>
+            <span>Typing indicators, replies, and read receipts in real time.</span>
+          </article>
+          <article class="feature">
+            <div class="ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <strong>Friends & groups</strong>
+            <span>Find people, accept requests, and keep group chats tidy.</span>
+          </article>
+          <article class="feature">
+            <div class="ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.12 4.11 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.98.36 1.94.7 2.86a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.22-1.27a2 2 0 0 1 2.11-.45c.92.34 1.88.57 2.86.7A2 2 0 0 1 22 16.92z"/></svg>
+            </div>
+            <strong>Voice & video</strong>
+            <span>Jump into calls when texting isn't enough.</span>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel">
+        <p class="kicker">Android install</p>
+        <h2>Three quick steps</h2>
+        <p>Sideload the APK from this site in under a minute.</p>
+        <div class="steps">
+          <div class="step">
+            <strong>Download</strong>
+            <span>Tap Android APK above and save the file on your phone.</span>
+          </div>
+          <div class="step">
+            <strong>Allow install</strong>
+            <span>If asked, allow installs from your browser or files app.</span>
+          </div>
+          <div class="step">
+            <strong>Open IMX</strong>
+            <span>Install, open the app, and sign in with your account.</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <p class="kicker">FAQ</p>
+        <h2>Good to know</h2>
+        <div class="faq">
+          <details>
+            <summary>Is IMX free?</summary>
+            <p>Yes. Download and use the apps at no charge.</p>
+          </details>
+          <details>
+            <summary>Where do downloads come from?</summary>
+            <p>Everything is hosted on IMX at imx-cbf0.onbelmo.uk — Android and Windows both.</p>
+          </details>
+          <details>
+            <summary>Can I use it in the browser?</summary>
+            <p>Yes. Open the web app anytime if you don't want to install.</p>
+          </details>
+          <details>
+            <summary>Windows file missing?</summary>
+            <p>If the Windows download isn't ready yet, use the web app or Android meanwhile.</p>
+          </details>
+        </div>
+      </section>
+
+      <footer class="foot">
+        <span>IMX © 2026</span>
+        <a href="https://imx-cbf0.onbelmo.uk/">Launch web app</a>
+      </footer>
+    </div>
   </div>
 </body>
 </html>
