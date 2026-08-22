@@ -6,7 +6,9 @@ const ICE_SERVERS: RTCConfiguration = {
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
     { urls: 'stun:stun2.l.google.com:19302' },
-    { urls: 'stun:stun3.l.google.com:19302' },
+    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
   ],
 };
 
@@ -29,6 +31,7 @@ export function useWebRTC(me: { id: string; displayName: string; avatarUrl?: str
   const [muted, setMuted] = useState(false);
   const [videoOff, setVideoOff] = useState(false);
   const [screenSharing, setScreenSharing] = useState(false);
+  const [callError, setCallError] = useState<string | null>(null);
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
@@ -57,6 +60,7 @@ export function useWebRTC(me: { id: string; displayName: string; avatarUrl?: str
     setMuted(false);
     setVideoOff(false);
     setScreenSharing(false);
+    setCallError(null);
     bufferedIceRef.current = [];
   }, []);
 
@@ -79,14 +83,22 @@ export function useWebRTC(me: { id: string; displayName: string; avatarUrl?: str
     };
 
     pc.onconnectionstatechange = () => {
-      if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected' || pc.connectionState === 'closed') {
-        cleanup();
+      console.log('[WebRTC] connection state:', pc.connectionState);
+      if (pc.connectionState === 'failed') {
+        setCallError('Connection failed');
+        setTimeout(() => { cleanup(); }, 2000);
+      } else if (pc.connectionState === 'disconnected') {
+        setCallError('Peer disconnected');
       }
     };
 
     pc.oniceconnectionstatechange = () => {
+      console.log('[WebRTC] ICE state:', pc.iceConnectionState);
       if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
         setCallState('active');
+        setCallError(null);
+      } else if (pc.iceConnectionState === 'failed') {
+        setCallError('Could not connect — try again');
       }
     };
 
@@ -97,56 +109,92 @@ export function useWebRTC(me: { id: string; displayName: string; avatarUrl?: str
     const pc = pcRef.current;
     if (!pc) return;
     for (const c of bufferedIceRef.current) {
-      pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {});
+      pc.addIceCandidate(new RTCIceCandidate(c)).catch(console.error);
     }
     bufferedIceRef.current = [];
   }, []);
 
   const getMedia = useCallback(async (mode: CallMode) => {
-    const constraints: MediaStreamConstraints = {
-      audio: true,
-      video: mode === 'video' ? { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } : false,
-    };
-    const stream = await navigator.mediaDevices.getUserMedia(constraints);
-    localStreamRef.current = stream;
-    setLocalStream(stream);
-    return stream;
+    try {
+      const constraints: MediaStreamConstraints = {
+        audio: true,
+        video: mode === 'video' ? { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } : false,
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      localStreamRef.current = stream;
+      setLocalStream(stream);
+      return stream;
+    } catch (err: any) {
+      console.error('[WebRTC] getUserMedia failed:', err);
+      const msg = err?.name === 'NotAllowedError'
+        ? 'Microphone permission denied — allow it in browser settings'
+        : err?.name === 'NotFoundError'
+          ? 'No microphone found'
+          : `Media error: ${err?.message ?? err}`;
+      setCallError(msg);
+      throw new Error(msg);
+    }
   }, []);
 
   const startCall = useCallback(async (conversationId: string, peerId: string, peerName: string, peerAvatar?: string | null, mode: CallMode = 'voice') => {
-    const stream = await getMedia(mode);
-    const pc = createPeer(conversationId, peerId);
-    pcRef.current = pc;
+    try {
+      setCallError(null);
+      const stream = await getMedia(mode);
+      const pc = createPeer(conversationId, peerId);
+      pcRef.current = pc;
 
-    stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+      stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+      console.log('[WebRTC] Added tracks:', stream.getTracks().map((t) => t.kind));
 
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      console.log('[WebRTC] Created offer, local description set');
 
-    setCallState('outgoing');
-    setCallInfo({ conversationId, peerId, peerName, peerAvatar, mode });
+      setCallState('outgoing');
+      setCallInfo({ conversationId, peerId, peerName, peerAvatar, mode });
 
-    connectSocket().emit('call:init', { conversationId, calleeId: peerId, offer });
-  }, [getMedia, createPeer]);
+      connectSocket().emit('call:init', { conversationId, calleeId: peerId, offer });
+      console.log('[WebRTC] Sent call:init to', peerId);
+    } catch (err: any) {
+      console.error('[WebRTC] startCall failed:', err);
+      setCallError(err.message ?? 'Failed to start call');
+      cleanup();
+    }
+  }, [getMedia, createPeer, cleanup]);
 
   const acceptCall = useCallback(async (conversationId: string, peerId: string, peerName: string, peerAvatar: string | null | undefined, offer: RTCSessionDescriptionInit, mode: CallMode = 'voice') => {
-    const stream = await getMedia(mode);
-    const pc = createPeer(conversationId, peerId);
-    pcRef.current = pc;
+    try {
+      setCallError(null);
+      console.log('[WebRTC] Accepting call from', peerId);
+      const stream = await getMedia(mode);
+      const pc = createPeer(conversationId, peerId);
+      pcRef.current = pc;
 
-    stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+      stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+      console.log('[WebRTC] Added tracks:', stream.getTracks().map((t) => t.kind));
 
-    await pc.setRemoteDescription(new RTCSessionDescription(offer));
-    flushIce();
+      console.log('[WebRTC] Setting remote description...');
+      await pc.setRemoteDescription(new RTCSessionDescription(offer));
+      console.log('[WebRTC] Remote description set, flushing ICE...');
 
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
+      flushIce();
 
-    setCallState('active');
-    setCallInfo({ conversationId, peerId, peerName, peerAvatar, mode });
+      console.log('[WebRTC] Creating answer...');
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      console.log('[WebRTC] Answer created and local description set');
 
-    connectSocket().emit('call:accept', { conversationId, answer });
-  }, [getMedia, createPeer, flushIce]);
+      setCallState('active');
+      setCallInfo({ conversationId, peerId, peerName, peerAvatar, mode });
+
+      connectSocket().emit('call:accept', { conversationId, answer });
+      console.log('[WebRTC] Sent call:accept');
+    } catch (err: any) {
+      console.error('[WebRTC] acceptCall failed:', err);
+      setCallError(err.message ?? 'Failed to accept call');
+      cleanup();
+    }
+  }, [getMedia, createPeer, flushIce, cleanup]);
 
   const rejectCall = useCallback((conversationId: string) => {
     getSocket()?.emit('call:reject', { conversationId });
@@ -213,6 +261,7 @@ export function useWebRTC(me: { id: string; displayName: string; avatarUrl?: str
     const socket = connectSocket();
 
     const onRinging = (data: { conversationId: string; caller: { id: string; displayName: string; avatarUrl?: string | null }; offer: unknown }) => {
+      console.log('[WebRTC] Received call:ringing from', data.caller.id);
       bufferedIceRef.current = [];
       setCallState('ringing');
       setCallInfo({
@@ -228,18 +277,19 @@ export function useWebRTC(me: { id: string; displayName: string; avatarUrl?: str
     };
 
     const onAccepted = (data: { conversationId: string; answer: unknown }) => {
+      console.log('[WebRTC] Received call:accepted');
       if (pcRef.current) {
         pcRef.current.setRemoteDescription(new RTCSessionDescription(data.answer as RTCSessionDescriptionInit))
-          .then(() => flushIce())
-          .catch(console.error);
+          .then(() => { flushIce(); console.log('[WebRTC] Remote description (answer) set'); })
+          .catch((err) => console.error('[WebRTC] Failed to set answer:', err));
       }
       setCallState('active');
     };
 
-    const onRejected = () => { setCallState('idle'); setCallInfo(null); cleanup(); };
-    const onEnded = () => { setCallState('idle'); setCallInfo(null); cleanup(); };
-    const onBusy = () => { setCallState('idle'); setCallInfo(null); cleanup(); };
-    const onOffline = () => { setCallState('idle'); setCallInfo(null); cleanup(); };
+    const onRejected = () => { console.log('[WebRTC] Call rejected'); setCallState('idle'); setCallInfo(null); cleanup(); };
+    const onEnded = () => { console.log('[WebRTC] Call ended'); setCallState('idle'); setCallInfo(null); cleanup(); };
+    const onBusy = () => { setCallState('idle'); setCallInfo(null); setCallError('User is busy'); cleanup(); };
+    const onOffline = () => { setCallState('idle'); setCallInfo(null); setCallError('User is offline'); cleanup(); };
 
     const onCallIce = (data: { candidate: unknown }) => {
       if (data.candidate) {
@@ -271,7 +321,7 @@ export function useWebRTC(me: { id: string; displayName: string; avatarUrl?: str
   }, [cleanup, flushIce]);
 
   return {
-    callState, callInfo, localStream, remoteStream, muted, videoOff, screenSharing,
+    callState, callInfo, localStream, remoteStream, muted, videoOff, screenSharing, callError,
     startCall, acceptCall, rejectCall, endCall,
     toggleMute, toggleVideo, toggleScreenShare,
   };
