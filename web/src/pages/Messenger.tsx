@@ -13,6 +13,7 @@ import { ChatDetails } from './ChatDetails';
 import { FriendsPanel } from './FriendsPanel';
 import { useWebRTC } from '../lib/useWebRTC';
 import { CallOverlay } from '../components/CallOverlay';
+import { CustomizationPanel } from '../components/CustomizationPanel';
 
 type PresenceMap = Record<string, { isOnline: boolean; lastSeenAt?: string | null }>;
 
@@ -50,6 +51,7 @@ export function Messenger() {
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [groupCallPicker, setGroupCallPicker] = useState<'voice' | 'video' | null>(null);
+  const [customOpen, setCustomOpen] = useState(false);
   const [friendsOpen, setFriendsOpen] = useState(false);
   const [imageBusy, setImageBusy] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -74,6 +76,26 @@ export function Messenger() {
     document.documentElement.classList.toggle('light', lightMode);
     localStorage.setItem('imx.light', lightMode ? '1' : '0');
   }, [lightMode]);
+
+  // Restore custom UI settings
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('imx_custom') || '{}');
+      const root = document.documentElement;
+      if (saved.accentColor) root.style.setProperty('--accent', saved.accentColor);
+      if (saved.accentColor) root.style.setProperty('--mine', saved.accentColor);
+      if (saved.bgColor) root.style.setProperty('--bg', saved.bgColor);
+      if (saved.bg2Color) root.style.setProperty('--bg-2', saved.bg2Color);
+      if (saved.surfaceColor) root.style.setProperty('--surface', saved.surfaceColor);
+      if (saved.textColor) root.style.setProperty('--text', saved.textColor);
+      if (saved.mutedColor) root.style.setProperty('--muted', saved.mutedColor);
+      if (saved.borderRadius) { root.style.setProperty('--r-md', saved.borderRadius + 'px'); root.style.setProperty('--r-avatar', saved.borderRadius + 'px'); }
+      if (saved.fontFamily) root.style.setProperty('--font', saved.fontFamily);
+      if (saved.fontSize) document.body.style.fontSize = saved.fontSize + 'px';
+      if (saved.sidebarWidth) root.style.setProperty('--sidebar-w', saved.sidebarWidth + 'px');
+      if (saved.avatarRadius) root.style.setProperty('--r-avatar', saved.avatarRadius + 'px');
+    } catch {}
+  }, []);
 
   const scroller = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
@@ -691,6 +713,9 @@ export function Messenger() {
           </div>
           <button className="icon-btn" type="button" onClick={() => { setLightMode((v) => !v); }} aria-label="Toggle light mode" title="Toggle light mode">
             {lightMode ? <IconMoon /> : <IconSun />}
+          </button>
+          <button className="icon-btn" type="button" onClick={() => setCustomOpen(true)} aria-label="Customize" title="Customize UI">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
           </button>
           <div style={{ position: 'relative' }}>
             <button className="icon-btn" type="button" onClick={(e) => {
@@ -1347,6 +1372,7 @@ export function Messenger() {
         onToggleScreenShare={webrtc.toggleScreenShare}
         screenSharing={webrtc.screenSharing}
       />
+      <CustomizationPanel isOpen={customOpen} onClose={() => setCustomOpen(false)} me={me} />
     </div>
   );
 }
