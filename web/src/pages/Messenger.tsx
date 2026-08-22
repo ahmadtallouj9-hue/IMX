@@ -13,7 +13,7 @@ import { ChatDetails } from './ChatDetails';
 import { FriendsPanel } from './FriendsPanel';
 import { useWebRTC } from '../lib/useWebRTC';
 import { CallOverlay } from '../components/CallOverlay';
-import { CustomizationPanel } from '../components/CustomizationPanel';
+import { CustomizationPanel, applySavedCustomProperties, clearCustomProperties } from '../components/CustomizationPanel';
 
 type PresenceMap = Record<string, { isOnline: boolean; lastSeenAt?: string | null }>;
 
@@ -77,26 +77,13 @@ export function Messenger() {
   useEffect(() => {
     document.documentElement.classList.toggle('light', lightMode);
     localStorage.setItem('imx.light', lightMode ? '1' : '0');
+    if (lightMode) clearCustomProperties();
+    else applySavedCustomProperties();
   }, [lightMode]);
 
-  // Restore custom UI settings
   useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem('imx_custom') || '{}');
-      const root = document.documentElement;
-      if (saved.accentColor) root.style.setProperty('--accent', saved.accentColor);
-      if (saved.accentColor) root.style.setProperty('--mine', saved.accentColor);
-      if (saved.bgColor) root.style.setProperty('--bg', saved.bgColor);
-      if (saved.bg2Color) root.style.setProperty('--bg-2', saved.bg2Color);
-      if (saved.surfaceColor) root.style.setProperty('--surface', saved.surfaceColor);
-      if (saved.textColor) root.style.setProperty('--text', saved.textColor);
-      if (saved.mutedColor) root.style.setProperty('--muted', saved.mutedColor);
-      if (saved.borderRadius) { root.style.setProperty('--r-md', saved.borderRadius + 'px'); root.style.setProperty('--r-avatar', saved.borderRadius + 'px'); }
-      if (saved.fontFamily) root.style.setProperty('--font', saved.fontFamily);
-      if (saved.fontSize) document.body.style.fontSize = saved.fontSize + 'px';
-      if (saved.sidebarWidth) root.style.setProperty('--sidebar-w', saved.sidebarWidth + 'px');
-      if (saved.avatarRadius) root.style.setProperty('--r-avatar', saved.avatarRadius + 'px');
-    } catch {}
+    if (localStorage.getItem('imx.light') === '1') return;
+    applySavedCustomProperties();
   }, []);
 
   const scroller = useRef<HTMLDivElement>(null);
@@ -132,11 +119,26 @@ export function Messenger() {
   }, []);
 
   useEffect(() => {
-    if (!notifsOpen) return;
-    const close = () => setNotifsOpen(false);
-    document.addEventListener('click', close);
-    return () => document.removeEventListener('click', close);
-  }, [notifsOpen]);
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== 'Escape') return;
+      if (webrtc.callState !== 'idle') return;
+      if (customOpen) return;
+      if (lightboxSrc) { setLightboxSrc(null); setLightboxZoom(1); lightboxPos.current = { x: 0, y: 0 }; return; }
+      if (groupCallPicker) { setGroupCallPicker(null); return; }
+      if (forwardMsg) { setForwardMsg(null); return; }
+      if (groupOpen) { setGroupOpen(false); return; }
+      if (friendsOpen) { setFriendsOpen(false); return; }
+      if (detailsOpen) { setDetailsOpen(false); return; }
+      if (viewedUser) { setViewedUser(null); return; }
+      if (profileOpen) { setProfileOpen(false); return; }
+      if (notifsOpen) { setNotifsOpen(false); return; }
+      if (emojiOpen) { setEmojiOpen(false); return; }
+      if (searchOpen) { setSearchOpen(false); setSearchResults([]); setSearchQuery(''); return; }
+      if (replyTo || editingId) { setReplyTo(null); setEditingId(null); if (editingId) setDraft(''); }
+    }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [webrtc.callState, customOpen, lightboxSrc, groupCallPicker, forwardMsg, groupOpen, friendsOpen, detailsOpen, viewedUser, profileOpen, notifsOpen, emojiOpen, searchOpen, replyTo, editingId]);
 
   useEffect(() => {
     const socket = connectSocket();
@@ -780,44 +782,17 @@ export function Messenger() {
           <button className="icon-btn" type="button" onClick={() => setCustomOpen(true)} aria-label="Customize" title="Customize UI">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
           </button>
-          <div style={{ position: 'relative' }}>
-            <button className="icon-btn" type="button" onClick={(e) => {
-              e.stopPropagation();
+          <div className="notif-wrap">
+            <button className="icon-btn" type="button" onClick={() => {
               setNotifsOpen((v) => !v);
               if (!notifsOpen) {
                 api.notifications().then((r) => setNotifList(r.notifications)).catch(() => {});
                 api.markNotificationsRead().then(() => setNotifCount(0)).catch(() => {});
               }
-            }} aria-label="Notifications" title="Notifications" style={{ position: 'relative' }}>
+            }} aria-label="Notifications" title="Notifications">
               <IconBell />
               {notifCount > 0 && <span className="notif-badge">{notifCount > 99 ? '99+' : notifCount}</span>}
             </button>
-            {notifsOpen && (
-              <div className="notif-panel" onClick={(e) => e.stopPropagation()}>
-                <div className="notif-header">
-                  <strong>Notifications</strong>
-                  <button className="text-btn" type="button" onClick={() => {
-                    api.markNotificationsRead().then(() => setNotifCount(0)).catch(() => {});
-                    setNotifList((curr) => curr.map((n) => ({ ...n, read: true })));
-                  }}>Mark all read</button>
-                </div>
-                {notifList.length === 0 ? (
-                  <p className="notif-empty">No notifications yet</p>
-                ) : (
-                  notifList.map((n) => (
-                    <div key={n.id} className={`notif-item ${n.read ? '' : 'unread'}`}>
-                      <div className="notif-icon">
-                        {n.type === 'FRIEND_REQUEST' ? '👤' : n.type === 'FRIEND_ACCEPTED' ? '✅' : n.type === 'INCOMING_CALL' ? '📞' : '💬'}
-                      </div>
-                      <div className="notif-content">
-                        <strong>{n.title}</strong>
-                        {n.body && <p>{n.body}</p>}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            )}
           </div>
           <button className="icon-btn" type="button" onClick={() => setFriendsOpen(true)} aria-label="Friends">
             <IconUsers />
@@ -1151,7 +1126,7 @@ export function Messenger() {
                   </button>
                 </div>
               )}
-            <form className="composer" onSubmit={(e) => void send(e)}>
+            <form className={`composer ${draft.trim() ? 'has-draft' : ''}`} onSubmit={(e) => void send(e)}>
               <button
                 className={`icon-btn ${searchOpen ? 'active' : ''}`}
                 type="button"
@@ -1224,14 +1199,21 @@ export function Messenger() {
               >
                 {recording ? <IconStop /> : <IconMic />}
               </button>
-              <input
+              <textarea
                 value={draft}
                 onChange={(e) => onDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (draft.trim() && !sending) e.currentTarget.form?.requestSubmit();
+                  }
+                }}
                 placeholder="Write a message"
                 aria-label="Message"
                 maxLength={4000}
+                rows={1}
               />
-              <button className="btn primary" type="submit" disabled={!draft.trim() || sending}>
+              <button className="btn primary send-btn" type="submit" disabled={!draft.trim() || sending}>
                 Send
               </button>
             </form>
@@ -1241,7 +1223,7 @@ export function Messenger() {
       </main>
 
       {profileOpen && (
-        <div className="overlay" onClick={() => setProfileOpen(false)}>
+        <div className="overlay" role="dialog" aria-modal="true" aria-label="Your profile" onClick={() => setProfileOpen(false)}>
           <form className="sheet" onClick={(e) => e.stopPropagation()} onSubmit={(e) => void saveProfile(e)}>
             <h2>Your profile</h2>
             <Avatar user={{ ...me, displayName }} />
@@ -1288,7 +1270,7 @@ export function Messenger() {
       )}
 
       {viewedUser && (
-        <div className="overlay" onClick={() => setViewedUser(null)}>
+        <div className="overlay" role="dialog" aria-modal="true" aria-label="User profile" onClick={() => setViewedUser(null)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
             <Avatar user={viewedUser} />
             <h2>{viewedUser.displayName}</h2>
@@ -1327,7 +1309,7 @@ export function Messenger() {
       )}
 
       {groupOpen && (
-        <div className="overlay" onClick={() => setGroupOpen(false)}>
+        <div className="overlay" role="dialog" aria-modal="true" aria-label="New group" onClick={() => setGroupOpen(false)}>
           <form className="sheet" onClick={(e) => e.stopPropagation()} onSubmit={(e) => void createGroup(e)}>
             <h2>New group</h2>
             <label>
@@ -1359,7 +1341,7 @@ export function Messenger() {
       )}
 
       {forwardMsg && (
-        <div className="overlay" onClick={() => setForwardMsg(null)}>
+        <div className="overlay" role="dialog" aria-modal="true" aria-label="Forward message" onClick={() => setForwardMsg(null)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
             <h2>Forward to…</h2>
             <div className="conv-list">
@@ -1420,6 +1402,43 @@ export function Messenger() {
           </button>
           <div className="lightbox-hint">Scroll to zoom · Drag to pan · Double-click to reset</div>
         </div>
+      )}
+      {notifsOpen && (
+        <>
+          <div className="notif-backdrop" onClick={() => setNotifsOpen(false)} />
+          <aside className="notif-slide-panel open" role="dialog" aria-modal="true" aria-label="Notifications">
+            <div className="notif-slide-head">
+              <h3>Notifications</h3>
+              <div className="actions">
+                <button className="text-btn" type="button" onClick={() => {
+                  api.markNotificationsRead().then(() => setNotifCount(0)).catch(() => {});
+                  setNotifList((curr) => curr.map((n) => ({ ...n, read: true })));
+                }}>Mark all read</button>
+                <button className="icon-btn" type="button" aria-label="Close notifications" onClick={() => setNotifsOpen(false)}>
+                  <IconClose />
+                </button>
+              </div>
+            </div>
+            <div className="notif-slide-body">
+              {notifList.length === 0 ? (
+                <p className="notif-empty">No notifications yet</p>
+              ) : (
+                notifList.map((n) => (
+                  <div key={n.id} className={`notif-item ${n.read ? '' : 'unread'}`}>
+                    <div className="notif-icon">
+                      {n.type === 'FRIEND_REQUEST' ? '👤' : n.type === 'FRIEND_ACCEPTED' ? '✅' : n.type === 'INCOMING_CALL' ? '📞' : '💬'}
+                    </div>
+                    <div className="notif-content">
+                      <strong>{n.title}</strong>
+                      {n.body && <p>{n.body}</p>}
+                    </div>
+                    <span className="meta"><time>{formatTime(n.createdAt)}</time></span>
+                  </div>
+                ))
+              )}
+            </div>
+          </aside>
+        </>
       )}
       {groupCallPicker && active?.type === 'GROUP' && (
         <div className="call-overlay incoming" onClick={() => setGroupCallPicker(null)}>
