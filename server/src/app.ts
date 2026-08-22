@@ -157,34 +157,61 @@ export function buildApp(): FastifyInstance {
   });
 
   // --- App downloads hosted on this website (not itch.io) ---
-  const apkPath = [
-    join(uploadsDir, 'imx.apk'),
-    join(process.cwd(), 'uploads', 'imx.apk'),
-    join(process.cwd(), 'downloads', 'imx.apk'),
-    join(process.cwd(), '..', 'server', 'downloads', 'imx.apk'),
-  ].find((p) => existsSync(p));
-  const windowsPath = [
-    join(process.cwd(), 'downloads', 'imx-windows.exe'),
-    join(process.cwd(), 'downloads', 'imx-windows.zip'),
-    join(uploadsDir, 'imx-windows.exe'),
-    join(uploadsDir, 'imx-windows.zip'),
-    join(uploadsDir, 'imx.zip'),
-    join(process.cwd(), 'uploads', 'imx-windows.exe'),
-    join(process.cwd(), 'uploads', 'imx-windows.zip'),
-    join(process.cwd(), '..', 'server', 'downloads', 'imx-windows.exe'),
-    join(process.cwd(), '..', 'server', 'downloads', 'imx-windows.zip'),
-  ].find((p) => existsSync(p));
+  function resolveDownload(...parts: string[]): string | undefined {
+    const base = [
+      process.cwd(),
+      join(process.cwd(), 'downloads'),
+      join(process.cwd(), 'uploads'),
+      uploadsDir,
+      join(__dirname, '..', '..', 'downloads'),
+      join(__dirname, '..', '..', 'uploads'),
+      join(process.cwd(), '..', 'server', 'downloads'),
+      join(process.cwd(), '..', 'server', 'uploads'),
+    ];
+    for (const dir of base) {
+      const candidate = join(dir, ...parts);
+      if (existsSync(candidate)) return candidate;
+    }
+    // Also accept full relative filenames passed as a single part under known roots
+    return undefined;
+  }
+
+  function findApk(): string | undefined {
+    return (
+      resolveDownload('imx.apk') ||
+      [join(uploadsDir, 'imx.apk'), join(process.cwd(), 'downloads', 'imx.apk')].find((p) => existsSync(p))
+    );
+  }
+
+  function findWindows(): string | undefined {
+    const names = ['imx-windows.exe', 'imx-windows.zip', 'imx.zip'];
+    for (const name of names) {
+      const hit = resolveDownload(name);
+      if (hit) return hit;
+    }
+    return undefined;
+  }
+
+  const WINDOWS_FALLBACK_URL =
+    'https://github.com/ahmadtallouj9-hue/IMX/raw/main/server/downloads/imx-windows.exe';
+
+  function missingDownloadHtml(): string {
+    return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>IMX Download</title>
+<style>body{margin:0;min-height:100dvh;display:grid;place-items:center;font-family:system-ui,sans-serif;background:#0f1419;color:#f4f6f8;padding:32px;text-align:center}
+h1{margin:0 0 10px;font-size:1.6rem}p{margin:0 0 22px;color:#9aa3af;max-width:36ch}
+a{color:#e85d04;font-weight:700;text-decoration:none}a:hover{text-decoration:underline}</style></head>
+<body><div><h1>File not ready yet</h1><p>This build is missing from the server. Try again after deploy, or open more info.</p>
+<a href="https://imx-cbf0.onbelmo.uk/download.html">More info →</a></div></body></html>`;
+  }
 
   async function sendFileDownload(
-    reply: { code: (n: number) => any; type: (t: string) => any; header: (k: string, v: string) => any; send: (b: unknown) => unknown },
+    reply: { code: (n: number) => any; type: (t: string) => any; header: (k: string, v: string) => any; send: (b: unknown) => unknown; redirect?: (url: string) => unknown },
     filePath: string | undefined,
     fallbackName: string,
     mime: string,
   ) {
     if (!filePath || !existsSync(filePath)) {
-      return reply.code(404).type('text/html').send(
-        '<!DOCTYPE html><html><body style="font-family:system-ui;background:#0f1419;color:#fff;padding:40px;text-align:center"><h1>File not uploaded yet</h1><p style="color:#9aa3af">Place the build in server/downloads and try again.</p><p><a href="https://imx-cbf0.onbelmo.uk/download.html" style="color:#e85d04">Back to downloads</a></p></body></html>',
-      );
+      return reply.code(404).type('text/html').send(missingDownloadHtml());
     }
     const name = basename(filePath);
     reply.header('Content-Type', mime);
@@ -194,15 +221,20 @@ export function buildApp(): FastifyInstance {
   }
 
   app.get('/download', async (_req, reply) =>
-    sendFileDownload(reply, apkPath, 'imx.apk', 'application/vnd.android.package-archive'),
+    sendFileDownload(reply, findApk(), 'imx.apk', 'application/vnd.android.package-archive'),
   );
   app.get('/download/android', async (_req, reply) =>
-    sendFileDownload(reply, apkPath, 'imx.apk', 'application/vnd.android.package-archive'),
+    sendFileDownload(reply, findApk(), 'imx.apk', 'application/vnd.android.package-archive'),
   );
   app.get('/download/windows', async (_req, reply) => {
-    const mime = windowsPath && windowsPath.endsWith('.exe') ? 'application/octet-stream' : 'application/zip';
-    const fallback = windowsPath && windowsPath.endsWith('.exe') ? 'imx-windows.exe' : 'imx-windows.zip';
-    return sendFileDownload(reply, windowsPath, fallback, mime);
+    const windowsPath = findWindows();
+    if (windowsPath) {
+      const mime = windowsPath.endsWith('.exe') ? 'application/octet-stream' : 'application/zip';
+      const fallback = windowsPath.endsWith('.exe') ? 'imx-windows.exe' : 'imx-windows.zip';
+      return sendFileDownload(reply, windowsPath, fallback, mime);
+    }
+    // Belmo images often omit the large exe — fall back to the GitHub-hosted build
+    return reply.redirect(WINDOWS_FALLBACK_URL);
   });
 
   const uploadMime: Record<string, string> = {
