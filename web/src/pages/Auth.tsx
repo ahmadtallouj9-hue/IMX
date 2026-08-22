@@ -46,23 +46,53 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
 
   return (
     <div className="auth">
-      <div className="auth-stage">
-        <div className="auth-visual" aria-hidden="true">
-          <div className="auth-orb auth-orb-a" />
-          <div className="auth-orb auth-orb-b" />
-          <div className="auth-grid" />
-        </div>
-        <header className="auth-top">
-          <span className="logo-mark" />
-          <strong className="auth-name">IMX</strong>
-        </header>
-        <div className="auth-copy">
-          <p className="auth-kicker">Messaging</p>
-          <h1>IMX</h1>
-          <p className="auth-tagline">A quieter place for real-time conversations.</p>
-        </div>
+      <div className="auth-atmosphere" aria-hidden="true">
+        <div className="auth-wash" />
+        <div className="auth-orb auth-orb-a" />
+        <div className="auth-orb auth-orb-b" />
+        <div className="auth-grid" />
+      </div>
+
+      <div className="auth-shell">
+        <aside className="auth-brand">
+          <header className="auth-top">
+            <span className="logo-mark" />
+            <strong className="auth-name">IMX</strong>
+          </header>
+
+          <div className="auth-copy">
+            <p className="auth-kicker">Real-time messaging</p>
+            <h1>IMX</h1>
+            <p className="auth-tagline">Quiet chats. Fast replies. Yours across phone and PC.</p>
+          </div>
+
+          <div className="auth-preview" aria-hidden="true">
+            <div className="auth-bubble theirs">
+              <span className="auth-bubble-name">Maya</span>
+              You free in a bit?
+            </div>
+            <div className="auth-bubble mine">Yeah — give me five.</div>
+            <div className="auth-bubble theirs typing">
+              <i /><i /><i />
+            </div>
+          </div>
+
+          <a className="auth-get-app" href="/download.html">
+            Download for Android &amp; Windows
+            <span aria-hidden="true">→</span>
+          </a>
+        </aside>
+
         <form className="auth-card" onSubmit={onSubmit}>
-          <h2>{mode === 'login' ? 'Sign in' : 'Create account'}</h2>
+          <div className="auth-card-head">
+            <h2>{mode === 'login' ? 'Welcome back' : 'Join IMX'}</h2>
+            <p>
+              {mode === 'login'
+                ? 'Sign in to pick up where you left off.'
+                : 'Create an account to start chatting.'}
+            </p>
+          </div>
+
           {mode === 'login' ? (
             <label htmlFor={`${idPrefix}-identifier`}>
               Username or email
@@ -113,6 +143,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
               </label>
             </>
           )}
+
           <label htmlFor={`${idPrefix}-password`}>
             Password
             <span className="password-field">
@@ -137,11 +168,18 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
               </button>
             </span>
           </label>
-          {error && <div className="banner error" role="alert" id={errorId}>{error}</div>}
-          <button className="btn primary" type="submit" disabled={busy}>
+
+          {error && (
+            <div className="banner error" role="alert" id={errorId}>
+              {error}
+            </div>
+          )}
+
+          <button className="btn primary auth-submit" type="submit" disabled={busy}>
             {busy && <span className="btn-spinner" aria-hidden="true" />}
             {busy ? 'Please wait…' : mode === 'login' ? 'Continue' : 'Create account'}
           </button>
+
           <p className="auth-switch">
             {mode === 'login' ? (
               <>New here? <Link to="/register">Create an account</Link></>
@@ -149,6 +187,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
               <>Already have one? <Link to="/login">Sign in</Link></>
             )}
           </p>
+
           {installable && !isStandalone() && (
             <button className="btn tertiary" type="button" onClick={() => void promptInstall()}>
               Install IMX app
