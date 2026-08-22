@@ -202,6 +202,7 @@ export function useWebRTC(me: { id: string; displayName: string; avatarUrl?: str
       await pc.setLocalDescription(answer);
 
       setCallInfo({ conversationId, peerId, peerName, peerAvatar, mode });
+      setCallState('active');
 
       connectSocket().emit('call:accept', { conversationId, answer });
     } catch (err: any) {

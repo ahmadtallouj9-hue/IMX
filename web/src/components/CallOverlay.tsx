@@ -48,20 +48,34 @@ export function CallOverlay({
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
 
+  // Always attach remote stream to audio element (for voice calls)
   useEffect(() => {
-    if (remoteVideoRef.current && remoteStream) remoteVideoRef.current.srcObject = remoteStream;
-  }, [remoteStream]);
-
-  useEffect(() => {
-    if (localVideoRef.current && localStream) localVideoRef.current.srcObject = localStream;
-  }, [localStream]);
-
-  useEffect(() => {
-    if (remoteAudioRef.current && remoteStream) {
-      remoteAudioRef.current.srcObject = remoteStream;
-      remoteAudioRef.current.play().catch(() => {});
+    const el = remoteAudioRef.current;
+    if (el && remoteStream) {
+      el.srcObject = remoteStream;
+      el.volume = 1;
+      const playPromise = el.play();
+      if (playPromise) playPromise.catch(() => {});
     }
-  }, [remoteStream]);
+  }, [remoteStream, callState]);
+
+  // Attach remote stream to video element (for video calls)
+  useEffect(() => {
+    const el = remoteVideoRef.current;
+    if (el && remoteStream) {
+      el.srcObject = remoteStream;
+      const playPromise = el.play();
+      if (playPromise) playPromise.catch(() => {});
+    }
+  }, [remoteStream, callState]);
+
+  // Attach local stream to local video element
+  useEffect(() => {
+    const el = localVideoRef.current;
+    if (el && localStream) {
+      el.srcObject = localStream;
+    }
+  }, [localStream]);
 
   if (callState === 'idle' || !callInfo) return null;
 
@@ -136,7 +150,7 @@ export function CallOverlay({
 
   return (
     <div className="call-overlay active">
-      <audio ref={remoteAudioRef} autoPlay playsInline style={{ display: 'none' }} />
+      <audio ref={remoteAudioRef} autoPlay playsInline />
       {(isVideo || screenSharing) && (
         <div className="call-video-container">
           {peerAvatarSrc && (
