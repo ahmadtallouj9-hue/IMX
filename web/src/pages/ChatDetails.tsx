@@ -46,13 +46,13 @@ function Switch({
       <button
         type="button"
         role="switch"
-        className={`switch ${checked ? 'on' : ''}`}
+        className={`pref-switch ${checked ? 'on' : ''}`}
         aria-checked={checked}
         aria-label={label}
         disabled={disabled}
         onClick={() => onChange(!checked)}
       >
-        <span className="switch-knob" />
+        <span className="pref-switch-knob" />
       </button>
     </label>
   );

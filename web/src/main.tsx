@@ -6,7 +6,7 @@ import { AuthProvider } from './lib/auth';
 import { listenForInstall } from './lib/install';
 import './styles.css';
 
-const BUILD_ID = 'ui-v5-panels';
+const BUILD_ID = 'ui-v5-auth-fix';
 
 listenForInstall();
 void import('@capacitor/app').then(({ App }) => {

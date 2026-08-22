@@ -142,7 +142,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
             {busy && <span className="btn-spinner" aria-hidden="true" />}
             {busy ? 'Please wait…' : mode === 'login' ? 'Continue' : 'Create account'}
           </button>
-          <p className="switch">
+          <p className="auth-switch">
             {mode === 'login' ? (
               <>New here? <Link to="/register">Create an account</Link></>
             ) : (
