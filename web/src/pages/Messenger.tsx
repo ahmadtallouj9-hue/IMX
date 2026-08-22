@@ -70,7 +70,7 @@ export function Messenger() {
   const [searching, setSearching] = useState(false);
   const [forwardMsg, setForwardMsg] = useState<ChatMessage | null>(null);
   const [lightMode, setLightMode] = useState(() => {
-    const ver = 'imx-ui-v4';
+    const ver = 'imx-ui-v5';
     if (localStorage.getItem('imx.ui.ver') !== ver) {
       localStorage.removeItem('imx_custom');
       localStorage.setItem('imx.ui.ver', ver);
@@ -1233,46 +1233,57 @@ export function Messenger() {
 
       {profileOpen && (
         <div className="overlay" role="dialog" aria-modal="true" aria-label="Your profile" onClick={() => setProfileOpen(false)}>
-          <form className="sheet" onClick={(e) => e.stopPropagation()} onSubmit={(e) => void saveProfile(e)}>
-            <h2>Your profile</h2>
-            <Avatar user={{ ...me, displayName }} />
-            {profileError && <div className="banner error">{profileError}</div>}
-            <label>
-              Display name
-              <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
-            </label>
-            <label className="file">
-              {avatarBusy ? 'Uploading…' : 'Change photo'}
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/gif,image/webp,image/*"
-                disabled={avatarBusy}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  e.target.value = '';
-                  if (file) void onAvatar(file);
-                }}
-              />
-            </label>
-            <label>
-              Server
-              <input
-                defaultValue={getApiUrl() || window.location.origin}
-                onBlur={(e) => {
-                  const next = e.target.value.trim();
-                  if (next && next !== getApiUrl()) {
-                    setApiUrl(next);
-                    window.location.reload();
-                  }
-                }}
-              />
-            </label>
-            <div className="actions">
-              <button className="btn primary" type="submit">Save</button>
-              {canInstall() && !isStandalone() && (
-                <button className="btn" type="button" onClick={() => void promptInstall()}>Install app</button>
-              )}
-              <button className="btn" type="button" onClick={() => void logout()}>Log out</button>
+          <form className="sheet profile-sheet" onClick={(e) => e.stopPropagation()} onSubmit={(e) => void saveProfile(e)}>
+            <div className="profile-hero">
+              <button className="icon-btn profile-x" type="button" onClick={() => setProfileOpen(false)} aria-label="Close">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+              </button>
+              <div className="profile-hero-av">
+                <Avatar user={{ ...me, displayName }} />
+                <label className="profile-photo-btn">
+                  {avatarBusy ? '…' : 'Edit'}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/gif,image/webp,image/*"
+                    disabled={avatarBusy}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      e.target.value = '';
+                      if (file) void onAvatar(file);
+                    }}
+                  />
+                </label>
+              </div>
+              <p className="profile-handle">@{me.username}</p>
+            </div>
+            <div className="profile-body">
+              <h2>Your profile</h2>
+              {profileError && <div className="banner error">{profileError}</div>}
+              <label className="profile-field">
+                Display name
+                <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} required />
+              </label>
+              <label className="profile-field">
+                Server
+                <input
+                  defaultValue={getApiUrl() || window.location.origin}
+                  onBlur={(e) => {
+                    const next = e.target.value.trim();
+                    if (next && next !== getApiUrl()) {
+                      setApiUrl(next);
+                      window.location.reload();
+                    }
+                  }}
+                />
+              </label>
+              <div className="profile-actions">
+                <button className="btn primary" type="submit">Save changes</button>
+                {canInstall() && !isStandalone() && (
+                  <button className="btn" type="button" onClick={() => void promptInstall()}>Install app</button>
+                )}
+                <button className="btn ghost-danger" type="button" onClick={() => void logout()}>Log out</button>
+              </div>
+              <p className="profile-build">IMX · panel v5</p>
             </div>
           </form>
         </div>
@@ -1280,13 +1291,25 @@ export function Messenger() {
 
       {viewedUser && (
         <div className="overlay" role="dialog" aria-modal="true" aria-label="User profile" onClick={() => setViewedUser(null)}>
-          <div className="sheet" onClick={(e) => e.stopPropagation()}>
-            <Avatar user={viewedUser} />
-            <h2>{viewedUser.displayName}</h2>
-            <p>@{viewedUser.username}</p>
-            {viewedUser.bio && <p>{viewedUser.bio}</p>}
-            <button className="btn primary" type="button" onClick={() => { setViewedUser(null); void openDirect(viewedUser); }}>
-              Message
+          <div className="sheet person-sheet" onClick={(e) => e.stopPropagation()}>
+            <button className="icon-btn person-x" type="button" onClick={() => setViewedUser(null)} aria-label="Close">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+            </button>
+            <div className="person-banner" aria-hidden="true" />
+            <div className="person-av-wrap">
+              <Avatar user={viewedUser} />
+            </div>
+            <div className="person-meta">
+              <h2>{viewedUser.displayName}</h2>
+              <span className="person-chip">@{viewedUser.username}</span>
+              {viewedUser.bio && <p className="person-bio">{viewedUser.bio}</p>}
+            </div>
+            <button
+              className="btn primary person-cta"
+              type="button"
+              onClick={() => { setViewedUser(null); void openDirect(viewedUser); }}
+            >
+              Start chat
             </button>
           </div>
         </div>
