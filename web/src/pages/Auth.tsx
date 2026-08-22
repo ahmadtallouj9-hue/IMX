@@ -96,7 +96,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
               <a
                 className="auth-install windows"
                 href="https://imx-cbf0.onbelmo.uk/download/windows"
-                download="imx-windows.zip"
+                download="imx-windows.exe"
               >
                 <span className="auth-install-icon" aria-hidden="true">
                   <WindowsIcon />

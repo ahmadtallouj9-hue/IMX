@@ -164,13 +164,15 @@ export function buildApp(): FastifyInstance {
     join(process.cwd(), '..', 'server', 'downloads', 'imx.apk'),
   ].find((p) => existsSync(p));
   const windowsPath = [
-    join(uploadsDir, 'imx-windows.zip'),
-    join(uploadsDir, 'imx-windows.exe'),
-    join(uploadsDir, 'imx.zip'),
-    join(process.cwd(), 'uploads', 'imx-windows.zip'),
-    join(process.cwd(), 'uploads', 'imx-windows.exe'),
-    join(process.cwd(), 'downloads', 'imx-windows.zip'),
     join(process.cwd(), 'downloads', 'imx-windows.exe'),
+    join(process.cwd(), 'downloads', 'imx-windows.zip'),
+    join(uploadsDir, 'imx-windows.exe'),
+    join(uploadsDir, 'imx-windows.zip'),
+    join(uploadsDir, 'imx.zip'),
+    join(process.cwd(), 'uploads', 'imx-windows.exe'),
+    join(process.cwd(), 'uploads', 'imx-windows.zip'),
+    join(process.cwd(), '..', 'server', 'downloads', 'imx-windows.exe'),
+    join(process.cwd(), '..', 'server', 'downloads', 'imx-windows.zip'),
   ].find((p) => existsSync(p));
 
   async function sendFileDownload(
@@ -199,7 +201,8 @@ export function buildApp(): FastifyInstance {
   );
   app.get('/download/windows', async (_req, reply) => {
     const mime = windowsPath && windowsPath.endsWith('.exe') ? 'application/octet-stream' : 'application/zip';
-    return sendFileDownload(reply, windowsPath, 'imx-windows.zip', mime);
+    const fallback = windowsPath && windowsPath.endsWith('.exe') ? 'imx-windows.exe' : 'imx-windows.zip';
+    return sendFileDownload(reply, windowsPath, fallback, mime);
   });
 
   const uploadMime: Record<string, string> = {
