@@ -1,7 +1,6 @@
 import { badRequest } from './errors';
 
 const AVATAR_PATH = /^\/uploads\/[A-Za-z0-9._-]+\.(jpg|jpeg|png|gif|webp)$/i;
-const FILE_NAME = /^[A-Za-z0-9._-]+\.(jpg|jpeg|png|gif|webp|webm|ogg|mp3|wav|m4a|mp4|mov|mkv|avi)$/i;
 
 export type SniffedImage = { mime: string; ext: string };
 
@@ -79,7 +78,7 @@ export function sniffVideo(buf: Buffer): SniffedImage | null {
 }
 
 export function isSafeUploadName(filename: string): boolean {
-  return FILE_NAME.test(filename);
+  return /^[A-Za-z0-9._-]+$/.test(filename);
 }
 
 export function parseAvatarUrl(input: string | null | undefined): string | null | undefined {

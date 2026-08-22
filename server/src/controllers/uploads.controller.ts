@@ -37,7 +37,16 @@ export class UploadsController {
     const sniffed = sniffedImg ?? sniffedAudio ?? sniffedVideo;
 
     if (!sniffed) {
-      throw badRequest('Only JPEG, PNG, GIF, WebP images, WebM/OGG/MP3/WAV audio, or MP4/MOV/MKV/AVI videos are allowed');
+      const ext = fileName.includes('.') ? fileName.slice(fileName.lastIndexOf('.')).toLowerCase() : '';
+      const result = await storeFile(fileBuffer, `upload${ext || '.bin'}`, 'application/octet-stream');
+      reply.status(201).send({
+        url: result.url,
+        fileName: result.fileName,
+        originalName: fileName,
+        mimeType: result.mimeType,
+        size: result.size,
+      });
+      return;
     }
 
     const result = await storeFile(fileBuffer, `upload${sniffed.ext}`, sniffed.mime);

@@ -52,6 +52,7 @@ export function Messenger() {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [groupCallPicker, setGroupCallPicker] = useState<'voice' | 'video' | null>(null);
   const [customOpen, setCustomOpen] = useState(false);
+  const [fileInput, setFileInput] = useState<'image' | 'video' | 'file' | null>(null);
   const [friendsOpen, setFriendsOpen] = useState(false);
   const [imageBusy, setImageBusy] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -501,6 +502,41 @@ export function Messenger() {
       void loadConversations();
     } catch (err) {
       setChatError(err instanceof ApiError ? err.message : 'Video send failed');
+    } finally {
+      setImageBusy(false);
+    }
+  }
+
+  async function sendFile(file: File) {
+    if (!conversationId) return;
+    setImageBusy(true);
+    setChatError(null);
+    try {
+      const uploaded = await api.upload(file);
+      const clientMessageId = newClientId();
+      const kind = file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : file.type.startsWith('audio/') ? 'audio' : 'file';
+      const attachments = [{ url: toUploadPath(uploaded.url), kind, fileName: uploaded.fileName, mimeType: uploaded.mimeType, size: uploaded.size }];
+      const optimistic: ChatMessage = {
+        id: clientMessageId,
+        clientMessageId,
+        body: null,
+        type: kind.toUpperCase() as any,
+        status: 'SENT',
+        sender: me,
+        conversationId,
+        createdAt: new Date().toISOString(),
+        readBy: [],
+        attachments: [{ id: clientMessageId, url: toUploadPath(uploaded.url), kind, fileName: uploaded.fileName }],
+      };
+      setMessages((curr) => [...curr, optimistic]);
+      stickToBottom.current = true;
+      const res = await api.sendMessage(conversationId, '', clientMessageId, attachments);
+      setMessages((curr) =>
+        curr.map((m) => (m.clientMessageId === clientMessageId ? { ...res.message, clientMessageId } : m)),
+      );
+      void loadConversations();
+    } catch (err) {
+      setChatError(err instanceof ApiError ? err.message : 'File send failed');
     } finally {
       setImageBusy(false);
     }
@@ -1067,12 +1103,16 @@ export function Messenger() {
               <input
                 ref={imageInput}
                 type="file"
-                accept="image/png,image/jpeg,image/gif,image/webp,image/*"
+                accept="*"
                 style={{ display: 'none' }}
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   e.target.value = '';
-                  if (file) void sendImage(file);
+                  if (file) {
+                    if (file.type.startsWith('image/')) void sendImage(file);
+                    else if (file.type.startsWith('video/')) void sendVideo(file);
+                    else void sendFile(file);
+                  }
                 }}
               />
               <button
@@ -1087,7 +1127,7 @@ export function Messenger() {
                 className="icon-btn"
                 type="button"
                 disabled={imageBusy}
-                aria-label="Send photo"
+                aria-label="Send file"
                 onClick={() => imageInput.current?.click()}
               >
                 {imageBusy ? '…' : <IconImage />}
@@ -1095,12 +1135,16 @@ export function Messenger() {
               <input
                 ref={videoInput}
                 type="file"
-                accept="video/mp4,video/quicktime,video/webm,video/x-matroska,video/x-msvideo,video/*"
+                accept="*"
                 style={{ display: 'none' }}
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   e.target.value = '';
-                  if (file) void sendVideo(file);
+                  if (file) {
+                    if (file.type.startsWith('image/')) void sendImage(file);
+                    else if (file.type.startsWith('video/')) void sendVideo(file);
+                    else void sendFile(file);
+                  }
                 }}
               />
               <button
