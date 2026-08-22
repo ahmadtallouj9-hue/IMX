@@ -46,110 +46,116 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
 
   return (
     <div className="auth">
-      <div className="auth-hero">
-        <div className="auth-hero-glow" aria-hidden="true" />
-        <p className="brand auth-brand">
+      <div className="auth-stage">
+        <div className="auth-visual" aria-hidden="true">
+          <div className="auth-orb auth-orb-a" />
+          <div className="auth-orb auth-orb-b" />
+          <div className="auth-grid" />
+        </div>
+        <header className="auth-top">
           <span className="logo-mark" />
-          IMX
-        </p>
-        <h1 className="auth-wordmark" aria-hidden="true">IMX</h1>
-        <p className="auth-tagline">Chat that stays out of the way.</p>
-      </div>
-      <form className="auth-card" onSubmit={onSubmit}>
-        <h2>{mode === 'login' ? 'Sign in' : 'Join IMX'}</h2>
-        <p className="auth-card-sub">{mode === 'login' ? 'Pick up where you left off.' : 'Create an account in under a minute.'}</p>
-        {mode === 'login' ? (
-          <label htmlFor={`${idPrefix}-identifier`}>
-            Username or email
-            <input
-              id={`${idPrefix}-identifier`}
-              value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
-              autoComplete="username"
-              autoFocus
-              required
-              aria-describedby={describedBy}
-            />
-          </label>
-        ) : (
-          <>
-            <label htmlFor={`${idPrefix}-username`}>
-              Username
+          <strong className="auth-name">IMX</strong>
+        </header>
+        <div className="auth-copy">
+          <p className="auth-kicker">Messaging</p>
+          <h1>IMX</h1>
+          <p className="auth-tagline">A quieter place for real-time conversations.</p>
+        </div>
+        <form className="auth-card" onSubmit={onSubmit}>
+          <h2>{mode === 'login' ? 'Sign in' : 'Create account'}</h2>
+          {mode === 'login' ? (
+            <label htmlFor={`${idPrefix}-identifier`}>
+              Username or email
               <input
-                id={`${idPrefix}-username`}
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                id={`${idPrefix}-identifier`}
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
                 autoComplete="username"
                 autoFocus
                 required
                 aria-describedby={describedBy}
               />
             </label>
-            <label htmlFor={`${idPrefix}-display`}>
-              Display name
+          ) : (
+            <>
+              <label htmlFor={`${idPrefix}-username`}>
+                Username
+                <input
+                  id={`${idPrefix}-username`}
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  autoComplete="username"
+                  autoFocus
+                  required
+                  aria-describedby={describedBy}
+                />
+              </label>
+              <label htmlFor={`${idPrefix}-display`}>
+                Display name
+                <input
+                  id={`${idPrefix}-display`}
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  autoComplete="nickname"
+                />
+              </label>
+              <label htmlFor={`${idPrefix}-email`}>
+                Email
+                <input
+                  id={`${idPrefix}-email`}
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                  required
+                  aria-describedby={describedBy}
+                />
+              </label>
+            </>
+          )}
+          <label htmlFor={`${idPrefix}-password`}>
+            Password
+            <span className="password-field">
               <input
-                id={`${idPrefix}-display`}
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                autoComplete="nickname"
-              />
-            </label>
-            <label htmlFor={`${idPrefix}-email`}>
-              Email
-              <input
-                id={`${idPrefix}-email`}
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
+                id={`${idPrefix}-password`}
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                 required
+                minLength={mode === 'register' ? 8 : undefined}
                 aria-describedby={describedBy}
               />
-            </label>
-          </>
-        )}
-        <label htmlFor={`${idPrefix}-password`}>
-          Password
-          <span className="password-field">
-            <input
-              id={`${idPrefix}-password`}
-              type={showPassword ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-              required
-              minLength={mode === 'register' ? 8 : undefined}
-              aria-describedby={describedBy}
-            />
-            <button
-              className="password-toggle"
-              type="button"
-              onClick={() => setShowPassword((v) => !v)}
-              aria-label={showPassword ? 'Hide password' : 'Show password'}
-              aria-pressed={showPassword}
-            >
-              {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-            </button>
-          </span>
-        </label>
-        {error && <div className="banner error" role="alert" id={errorId}>{error}</div>}
-        <button className="btn primary" type="submit" disabled={busy}>
-          {busy && <span className="btn-spinner" aria-hidden="true" />}
-          {busy ? 'Please wait…' : mode === 'login' ? 'Continue' : 'Create account'}
-        </button>
-        <p className="switch">
-          {mode === 'login' ? (
-            <>New here? <Link to="/register">Create an account</Link></>
-          ) : (
-            <>Already have one? <Link to="/login">Sign in</Link></>
-          )}
-        </p>
-        {installable && !isStandalone() && (
-          <button className="btn tertiary" type="button" onClick={() => void promptInstall()}>
-            Install IMX app
+              <button
+                className="password-toggle"
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                aria-pressed={showPassword}
+              >
+                {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+              </button>
+            </span>
+          </label>
+          {error && <div className="banner error" role="alert" id={errorId}>{error}</div>}
+          <button className="btn primary" type="submit" disabled={busy}>
+            {busy && <span className="btn-spinner" aria-hidden="true" />}
+            {busy ? 'Please wait…' : mode === 'login' ? 'Continue' : 'Create account'}
           </button>
-        )}
-      </form>
+          <p className="switch">
+            {mode === 'login' ? (
+              <>New here? <Link to="/register">Create an account</Link></>
+            ) : (
+              <>Already have one? <Link to="/login">Sign in</Link></>
+            )}
+          </p>
+          {installable && !isStandalone() && (
+            <button className="btn tertiary" type="button" onClick={() => void promptInstall()}>
+              Install IMX app
+            </button>
+          )}
+        </form>
+      </div>
     </div>
   );
 }

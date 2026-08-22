@@ -25,27 +25,33 @@ export function ServerSetup({ onReady }: { onReady: () => void }) {
 
   return (
     <div className="auth">
-      <div className="auth-hero">
-        <div className="auth-hero-glow" aria-hidden="true" />
-        <p className="brand auth-brand">
+      <div className="auth-stage">
+        <div className="auth-visual" aria-hidden="true">
+          <div className="auth-orb auth-orb-a" />
+          <div className="auth-orb auth-orb-b" />
+          <div className="auth-grid" />
+        </div>
+        <header className="auth-top">
           <span className="logo-mark" />
-          IMX
-        </p>
-        <h1 className="auth-wordmark" aria-hidden="true">IMX</h1>
-        <p className="auth-tagline">Connect to your IMX server on the same Wi‑Fi.</p>
+          <strong className="auth-name">IMX</strong>
+        </header>
+        <div className="auth-copy">
+          <p className="auth-kicker">Setup</p>
+          <h1>IMX</h1>
+          <p className="auth-tagline">Connect to your IMX server on the same Wi‑Fi.</p>
+        </div>
+        <form className="auth-card" onSubmit={(e) => void onSubmit(e)}>
+          <h2>Server address</h2>
+          <label>
+            API URL
+            <input value={url} onChange={(e) => setUrl(e.target.value)} autoCapitalize="off" autoCorrect="off" required />
+          </label>
+          {error && <div className="banner error">{error}</div>}
+          <button className="btn primary" type="submit" disabled={busy}>
+            {busy ? 'Checking…' : 'Continue'}
+          </button>
+        </form>
       </div>
-      <form className="auth-card" onSubmit={(e) => void onSubmit(e)}>
-        <h2>Server address</h2>
-        <p className="auth-card-sub">Enter the API URL for your host machine.</p>
-        <label>
-          API URL
-          <input value={url} onChange={(e) => setUrl(e.target.value)} autoCapitalize="off" autoCorrect="off" required />
-        </label>
-        {error && <div className="banner error">{error}</div>}
-        <button className="btn primary" type="submit" disabled={busy}>
-          {busy ? 'Checking…' : 'Continue'}
-        </button>
-      </form>
     </div>
   );
 }

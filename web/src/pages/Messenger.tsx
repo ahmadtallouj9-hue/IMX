@@ -69,7 +69,16 @@ export function Messenger() {
   const [searchResults, setSearchResults] = useState<ChatMessage[]>([]);
   const [searching, setSearching] = useState(false);
   const [forwardMsg, setForwardMsg] = useState<ChatMessage | null>(null);
-  const [lightMode, setLightMode] = useState(() => localStorage.getItem('imx.light') === '1');
+  const [lightMode, setLightMode] = useState(() => {
+    const ver = 'imx-ui-v4';
+    if (localStorage.getItem('imx.ui.ver') !== ver) {
+      localStorage.removeItem('imx_custom');
+      localStorage.setItem('imx.ui.ver', ver);
+      localStorage.setItem('imx.light', '1');
+      return true;
+    }
+    return localStorage.getItem('imx.light') !== '0';
+  });
   const [notifsOpen, setNotifsOpen] = useState(false);
   const [notifCount, setNotifCount] = useState(0);
   const [notifList, setNotifList] = useState<Array<{ id: string; type: string; title: string; body?: string; read: boolean; createdAt: string }>>([]);
@@ -761,7 +770,9 @@ export function Messenger() {
   const backgroundSrc = useMediaSrc(active?.backgroundUrl);
   const backgroundStyle = backgroundSrc
     ? {
-        backgroundImage: `linear-gradient(rgba(14,20,24,0.62), rgba(14,20,24,0.72)), url("${backgroundSrc}")`,
+        backgroundImage: lightMode
+          ? `linear-gradient(rgba(245,247,250,0.82), rgba(245,247,250,0.9)), url("${backgroundSrc}")`
+          : `linear-gradient(rgba(14,20,24,0.62), rgba(14,20,24,0.72)), url("${backgroundSrc}")`,
       }
     : undefined;
 
@@ -774,32 +785,34 @@ export function Messenger() {
         <header className="sidebar-head">
           <div className="brand compact">
             <span className="logo-mark" />
-            IMX
+            <span className="brand-text">IMX</span>
           </div>
-          <button className="icon-btn" type="button" onClick={() => { setLightMode((v) => !v); }} aria-label="Toggle light mode" title="Toggle light mode">
-            {lightMode ? <IconMoon /> : <IconSun />}
-          </button>
-          <button className="icon-btn" type="button" onClick={() => setCustomOpen(true)} aria-label="Customize" title="Customize UI">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-          </button>
-          <div className="notif-wrap">
-            <button className="icon-btn" type="button" onClick={() => {
-              setNotifsOpen((v) => !v);
-              if (!notifsOpen) {
-                api.notifications().then((r) => setNotifList(r.notifications)).catch(() => {});
-                api.markNotificationsRead().then(() => setNotifCount(0)).catch(() => {});
-              }
-            }} aria-label="Notifications" title="Notifications">
-              <IconBell />
-              {notifCount > 0 && <span className="notif-badge">{notifCount > 99 ? '99+' : notifCount}</span>}
+          <div className="sidebar-tools">
+            <button className="icon-btn" type="button" onClick={() => { setLightMode((v) => !v); }} aria-label="Toggle light mode" title="Toggle light mode">
+              {lightMode ? <IconMoon /> : <IconSun />}
+            </button>
+            <button className="icon-btn" type="button" onClick={() => setCustomOpen(true)} aria-label="Customize" title="Customize UI">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+            </button>
+            <div className="notif-wrap">
+              <button className="icon-btn" type="button" onClick={() => {
+                setNotifsOpen((v) => !v);
+                if (!notifsOpen) {
+                  api.notifications().then((r) => setNotifList(r.notifications)).catch(() => {});
+                  api.markNotificationsRead().then(() => setNotifCount(0)).catch(() => {});
+                }
+              }} aria-label="Notifications" title="Notifications">
+                <IconBell />
+                {notifCount > 0 && <span className="notif-badge">{notifCount > 99 ? '99+' : notifCount}</span>}
+              </button>
+            </div>
+            <button className="icon-btn" type="button" onClick={() => setFriendsOpen(true)} aria-label="Friends">
+              <IconUsers />
+            </button>
+            <button className="icon-btn" type="button" onClick={() => setGroupOpen(true)} aria-label="New group">
+              <IconPlus />
             </button>
           </div>
-          <button className="icon-btn" type="button" onClick={() => setFriendsOpen(true)} aria-label="Friends">
-            <IconUsers />
-          </button>
-          <button className="icon-btn" type="button" onClick={() => setGroupOpen(true)} aria-label="New group">
-            <IconPlus />
-          </button>
         </header>
         <div className="search-wrap">
           <input
@@ -872,21 +885,17 @@ export function Messenger() {
       <main className="main" data-theme={active?.theme ?? 'chatter'}>
         {!conversationId && (
           <div className="empty center welcome-screen">
-            <div className="welcome-logo">
-              <span className="logo-mark" />
-            </div>
-            <h2>Welcome to IMX</h2>
-            <p>Quiet surfaces. Fast replies. Yours to shape.</p>
+            <p className="welcome-kicker">Inbox</p>
+            <h2 className="welcome-brand">IMX</h2>
+            <p className="welcome-lead">Pick a chat, or find someone new.</p>
             <div className="welcome-actions">
               <button className="btn primary" type="button" onClick={() => setFriendsOpen(true)}>
-                <IconUsers /> Find Friends
+                <IconUsers /> Find friends
               </button>
               <button className="btn" type="button" onClick={() => setCustomOpen(true)}>
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
                 Customize
               </button>
             </div>
-            <p className="welcome-hint">Search for someone in the sidebar to start chatting.</p>
           </div>
         )}
         {conversationId && (

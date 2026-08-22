@@ -7,28 +7,23 @@ interface CustomizationPanelProps {
 }
 
 const PRESET_COLORS = [
-  { name: 'IMX Teal', accent: '#0d9488', bg: '#090b0e', bg2: '#12161c' },
-  { name: 'Telegram', accent: '#0088cc', bg: '#0e1621', bg2: '#17212b' },
+  { name: 'IMX Coral', accent: '#e85d04', bg: '#0b0d10', bg2: '#14181f' },
+  { name: 'Teal Night', accent: '#0d9488', bg: '#090b0e', bg2: '#12161c' },
   { name: 'WhatsApp', accent: '#00a884', bg: '#0b141a', bg2: '#111b21' },
   { name: 'Slack', accent: '#611f69', bg: '#1a1d21', bg2: '#222529' },
-  { name: 'Instagram', accent: '#e1306c', bg: '#121212', bg2: '#1e1e1e' },
-  { name: 'Matrix', accent: '#0dbd8b', bg: '#0e1525', bg2: '#15192a' },
   { name: 'Nord', accent: '#88c0d0', bg: '#2e3440', bg2: '#3b4252' },
   { name: 'Dracula', accent: '#bd93f9', bg: '#282a36', bg2: '#44475a' },
-  { name: 'Solarized', accent: '#268bd2', bg: '#002b36', bg2: '#073642' },
-  { name: 'Gruvbox', accent: '#b8bb26', bg: '#282828', bg2: '#3c3836' },
 ];
 
 const LIGHT_PRESET_COLORS = [
-  { name: 'Mist', accent: '#0f766e', bg: '#e8ecf1', bg2: '#ffffff' },
-  { name: 'Soft Blue', accent: '#0088cc', bg: '#e8f4fd', bg2: '#ffffff' },
-  { name: 'Warm', accent: '#e67e22', bg: '#fdf6ec', bg2: '#ffffff' },
-  { name: 'Mint', accent: '#00a884', bg: '#e6f9f3', bg2: '#ffffff' },
-  { name: 'Lavender', accent: '#7c3aed', bg: '#f3eefa', bg2: '#ffffff' },
+  { name: 'IMX Light', accent: '#e85d04', bg: '#d7dde6', bg2: '#f7f8fb' },
+  { name: 'Mist Teal', accent: '#0f766e', bg: '#e8ecf1', bg2: '#ffffff' },
+  { name: 'Soft Blue', accent: '#2563eb', bg: '#e8eef8', bg2: '#ffffff' },
+  { name: 'Mint', accent: '#059669', bg: '#e6f4ef', bg2: '#ffffff' },
 ];
 
 const FONT_OPTIONS = [
-  { name: 'Outfit', value: "'Outfit', system-ui, sans-serif" },
+  { name: 'Sora', value: "'Sora', system-ui, sans-serif" },
   { name: 'System', value: "system-ui, -apple-system, 'Segoe UI', sans-serif" },
   { name: 'Roboto', value: "'Roboto', sans-serif" },
   { name: 'Poppins', value: "'Poppins', sans-serif" },
@@ -123,6 +118,9 @@ function applySetting(key: string, value: any) {
       break;
     }
     case 'logoText': {
+      document.querySelectorAll('.brand-text, .auth-name, .welcome-brand').forEach((el) => {
+        el.textContent = value || 'IMX';
+      });
       const brands = document.querySelectorAll('.brand');
       brands.forEach((el) => {
         el.childNodes.forEach((node) => {
@@ -493,7 +491,7 @@ export function CustomizationPanel({ isOpen, onClose, me }: CustomizationPanelPr
                       canvas.width = 128;
                       canvas.height = 128;
                       const ctx = canvas.getContext('2d')!;
-                      ctx.fillStyle = settings.accentColor || '#0d9488';
+                      ctx.fillStyle = settings.accentColor || '#e85d04';
                       ctx.beginPath();
                       ctx.roundRect(0, 0, 128, 128, 24);
                       ctx.fill();
