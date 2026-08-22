@@ -443,6 +443,20 @@ html.light .wa-audio-time { color: var(--muted); }
 .hint { color: var(--muted); font-size: 0.8rem; margin: 0; }
 .row.plain { padding: 0; min-height: 0; width: auto; }
 
+/* ─── Reactions ─── */
+.react-btn { display: none; }
+.bundle:hover .react-btn { display: inline-grid; place-items: center; }
+.react-btn span { font-size: 14px; cursor: pointer; transition: transform 0.15s; }
+.react-btn:hover span { transform: scale(1.3); }
+.reactions-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.reaction-chip { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line-soft); background: var(--surface); font-size: 13px; cursor: pointer; transition: all 0.15s var(--ease); }
+.reaction-chip:hover { background: var(--surface-2); border-color: var(--accent); }
+.reaction-chip.mine { background: var(--accent-soft); border-color: var(--accent); }
+.reaction-chip span { font-size: 14px; }
+.reaction-chip em { font-style: normal; font-size: 11px; color: var(--muted); font-weight: 600; }
+.reaction-add { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; border: 1px dashed var(--line); background: transparent; color: var(--muted); font-size: 14px; cursor: pointer; transition: all 0.15s; }
+.reaction-add:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+
 /* Theme transition */
 html, body, .shell, .main, .sidebar, .bubble, .composer, .chat-head {
   transition: background-color var(--dur-slow) var(--ease), color var(--dur-slow) var(--ease), border-color var(--dur-slow) var(--ease);

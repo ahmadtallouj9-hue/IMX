@@ -244,6 +244,9 @@ export function Messenger() {
       if (p.conversationId !== conversationId) return;
       setMessages((curr) => curr.map((m) => (m.id === p.id ? { ...m, body: null, deletedAt: new Date().toISOString() } : m)));
     };
+    const onReactions = (p: { messageId: string; reactions: Record<string, Array<{ id: string; userId: string; username: string; displayName: string }>> }) => {
+      setMessages((curr) => curr.map((m) => (m.id === p.messageId ? { ...m, reactions: p.reactions } : m)));
+    };
     const onPresence = (p: { userId: string; isOnline: boolean; lastSeenAt?: string | null }) => {
       setPresence((curr) => ({ ...curr, [p.userId]: { isOnline: p.isOnline, lastSeenAt: p.lastSeenAt } }));
     };
@@ -283,6 +286,7 @@ export function Messenger() {
     socket.on('message:read', onRead);
     socket.on('message:edited', onEdited);
     socket.on('message:deleted', onDeleted);
+    socket.on('message:reactions', onReactions);
     socket.on('presence:update', onPresence);
     socket.on('presence:snapshot', onSnapshot);
     if (socket.connected) setConnected(true);
@@ -296,6 +300,7 @@ export function Messenger() {
       socket.off('message:read', onRead);
       socket.off('message:edited', onEdited);
       socket.off('message:deleted', onDeleted);
+      socket.off('message:reactions', onReactions);
       socket.off('presence:update', onPresence);
       socket.off('presence:snapshot', onSnapshot);
     };
@@ -725,6 +730,24 @@ export function Messenger() {
     }
   }
 
+  const QUICK_REACTIONS = ['❤️', '👍', '😂', '😮', '😢', '🔥'];
+
+  async function toggleReaction(messageId: string, emoji: string) {
+    if (!conversationId) return;
+    const msg = messages.find((m) => m.id === messageId);
+    const myReactions = msg?.reactions?.[emoji] ?? [];
+    const hasReacted = myReactions.some((r) => r.userId === me.id);
+    try {
+      if (hasReacted) {
+        const res = await api.removeReaction(conversationId, messageId, emoji);
+        setMessages((curr) => curr.map((m) => (m.id === messageId ? { ...m, reactions: res.reactions } : m)));
+      } else {
+        const res = await api.addReaction(conversationId, messageId, emoji);
+        setMessages((curr) => curr.map((m) => (m.id === messageId ? { ...m, reactions: res.reactions } : m)));
+      }
+    } catch {}
+  }
+
   const title = active
     ? active.type === 'GROUP'
       ? active.title ?? 'Group'
@@ -993,6 +1016,7 @@ export function Messenger() {
                             </button>
                           )}
                           <div className="msg-actions">
+                            <button type="button" title="React" aria-label="React" className="react-btn" onClick={() => toggleReaction(message.id, '❤️')}><span>❤️</span></button>
                             <button type="button" title="Reply" aria-label="Reply" onClick={() => setReplyTo(message)}><IconReply /></button>
                             {message.sender.id === me.id && !isDeleted && message.body && (
                               <>
@@ -1028,6 +1052,26 @@ export function Messenger() {
                           ))}
                           {message.body && <p>{message.body}{message.edited && <em className="edited-mark"> · edited</em>}</p>}
                           {!message.body && (message.attachments?.length ?? 0) === 0 && <p className="deleted">This message was deleted</p>}
+                          {message.reactions && Object.keys(message.reactions).length > 0 && (
+                            <div className="reactions-row">
+                              {Object.entries(message.reactions).map(([emoji, users]) => {
+                                const hasReacted = users.some((u) => u.userId === me.id);
+                                return (
+                                  <button
+                                    key={emoji}
+                                    type="button"
+                                    className={`reaction-chip ${hasReacted ? 'mine' : ''}`}
+                                    onClick={() => toggleReaction(message.id, emoji)}
+                                    title={users.map((u) => u.displayName).join(', ')}
+                                  >
+                                    <span>{emoji}</span>
+                                    <em>{users.length}</em>
+                                  </button>
+                                );
+                              })}
+                              <button type="button" className="reaction-add" onClick={() => toggleReaction(message.id, '👍')}>+</button>
+                            </div>
+                          )}
                             </>
                           )}
                           {index === group.messages.length - 1 && (

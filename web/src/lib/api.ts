@@ -158,6 +158,16 @@ export const api = {
     request<{ messages: ChatMessage[] }>(
       `/search/messages?q=${encodeURIComponent(q)}&conversationId=${conversationId}`,
     ),
+  addReaction: (conversationId: string, messageId: string, emoji: string) =>
+    request<{ reactions: Record<string, Array<{ id: string; userId: string; username: string; displayName: string }>> }>(
+      `/conversations/${conversationId}/messages/${messageId}/reactions`,
+      { method: 'POST', body: JSON.stringify({ emoji }) },
+    ),
+  removeReaction: (conversationId: string, messageId: string, emoji: string) =>
+    request<{ reactions: Record<string, Array<{ id: string; userId: string; username: string; displayName: string }>> }>(
+      `/conversations/${conversationId}/messages/${messageId}/reactions/${encodeURIComponent(emoji)}`,
+      { method: 'DELETE' },
+    ),
   updatePrefs: (id: string, prefs: { muted?: boolean; pinned?: boolean; theme?: string; backgroundUrl?: string | null }) =>
     request<{ prefs: { muted: boolean; pinned: boolean; theme: string; backgroundUrl: string | null } }>(`/conversations/${id}/prefs`, {
       method: 'PATCH',

@@ -39,6 +39,7 @@ model User {
   messages         Message[]
   messageReads     MessageRead[]
   notifications    Notification[]
+  reactions        MessageReaction[]
 
   @@index([username])
   @@index([email])
@@ -184,6 +185,7 @@ model Message {
   replies      Message[]    @relation("ReplyChain")
   attachments  MessageAttachment[]
   readBy       MessageRead[]
+  reactions    MessageReaction[]
 
   @@index([conversationId, createdAt])
   @@index([senderId])
@@ -254,4 +256,19 @@ model StoredUpload {
   createdAt DateTime @default(now())
 
   @@index([createdAt])
+}
+
+model MessageReaction {
+  id        String   @id @default(uuid())
+  messageId String
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
+  @@index([userId])
 }

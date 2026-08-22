@@ -13,6 +13,8 @@ export class MessagesController {
     app.patch(`${this.routePrefix}/:messageId`, { preValidation: [requireAuth] }, MessagesController.edit);
     app.delete(`${this.routePrefix}/:messageId`, { preValidation: [requireAuth] }, MessagesController.delete);
     app.post(`${this.routePrefix}/:messageId/read`, { preValidation: [requireAuth] }, MessagesController.markRead);
+    app.post(`${this.routePrefix}/:messageId/reactions`, { preValidation: [requireAuth] }, MessagesController.addReaction);
+    app.delete(`${this.routePrefix}/:messageId/reactions/:emoji`, { preValidation: [requireAuth] }, MessagesController.removeReaction);
   }
 
   static async list(req: FastifyRequest, reply: FastifyReply): Promise<void> {
@@ -36,6 +38,7 @@ export class MessagesController {
         sender: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
         readBy: { select: { userId: true, readAt: true } },
         attachments: { select: { id: true, kind: true, url: true, mimeType: true, size: true, fileName: true, width: true, height: true } },
+        reactions: { select: { id: true, userId: true, emoji: true, user: { select: { id: true, username: true, displayName: true } } } },
       },
       orderBy: { createdAt: 'desc' },
       take: limit + 1,
@@ -70,6 +73,14 @@ export class MessagesController {
           width: a.width,
           height: a.height,
         })),
+        reactions: (() => {
+          const grouped: Record<string, Array<{ id: string; userId: string; username: string; displayName: string }>> = {};
+          for (const r of m.reactions) {
+            if (!grouped[r.emoji]) grouped[r.emoji] = [];
+            grouped[r.emoji].push({ id: r.id, userId: r.userId, username: r.user.username, displayName: r.user.displayName });
+          }
+          return grouped;
+        })(),
       })),
       nextCursor,
       hasMore,
@@ -319,5 +330,74 @@ export class MessagesController {
     });
 
     reply.send({ success: true });
+  }
+
+  static async addReaction(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const userId = req.authUser!.id;
+    const { conversationId, messageId } = req.params as { conversationId: string; messageId: string };
+    const { emoji } = req.body as { emoji?: string };
+
+    if (!emoji || emoji.length > 8) throw badRequest('Invalid emoji');
+
+    const membership = await prisma.conversationMember.findUnique({
+      where: { conversationId_userId: { conversationId, userId } },
+    });
+    if (!membership) throw forbidden('Not a member of this conversation');
+
+    const message = await prisma.message.findUnique({ where: { id: messageId } });
+    if (!message) throw notFound('Message not found');
+    if (message.conversationId !== conversationId) throw notFound('Message not found in this conversation');
+
+    await prisma.messageReaction.upsert({
+      where: { messageId_userId_emoji: { messageId, userId, emoji } },
+      update: {},
+      create: { messageId, userId, emoji },
+    });
+
+    const reactions = await prisma.messageReaction.findMany({
+      where: { messageId },
+      include: { user: { select: { id: true, username: true, displayName: true } } },
+    });
+
+    const grouped: Record<string, Array<{ id: string; userId: string; username: string; displayName: string }>> = {};
+    for (const r of reactions) {
+      if (!grouped[r.emoji]) grouped[r.emoji] = [];
+      grouped[r.emoji].push({ id: r.id, userId: r.user.id, username: r.user.username, displayName: r.user.displayName });
+    }
+
+    const { getIO } = await import('../websocket/socket');
+    getIO()?.to(`conversation:${conversationId}`).emit('message:reactions', { messageId, reactions: grouped });
+
+    reply.send({ reactions: grouped });
+  }
+
+  static async removeReaction(req: FastifyRequest, reply: FastifyReply): Promise<void> {
+    const userId = req.authUser!.id;
+    const { conversationId, messageId, emoji } = req.params as { conversationId: string; messageId: string; emoji: string };
+
+    const membership = await prisma.conversationMember.findUnique({
+      where: { conversationId_userId: { conversationId, userId } },
+    });
+    if (!membership) throw forbidden('Not a member of this conversation');
+
+    await prisma.messageReaction.deleteMany({
+      where: { messageId, userId, emoji: decodeURIComponent(emoji) },
+    });
+
+    const reactions = await prisma.messageReaction.findMany({
+      where: { messageId },
+      include: { user: { select: { id: true, username: true, displayName: true } } },
+    });
+
+    const grouped: Record<string, Array<{ id: string; userId: string; username: string; displayName: string }>> = {};
+    for (const r of reactions) {
+      if (!grouped[r.emoji]) grouped[r.emoji] = [];
+      grouped[r.emoji].push({ id: r.id, userId: r.user.id, username: r.user.username, displayName: r.user.displayName });
+    }
+
+    const { getIO } = await import('../websocket/socket');
+    getIO()?.to(`conversation:${conversationId}`).emit('message:reactions', { messageId, reactions: grouped });
+
+    reply.send({ reactions: grouped });
   }
 }

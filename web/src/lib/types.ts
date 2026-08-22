@@ -43,6 +43,7 @@ export type ChatMessage = {
   deletedAt?: string | null;
   readBy: Array<{ userId: string; readAt: string }>;
   attachments?: Array<{ id: string; url: string; kind: string; fileName?: string | null; mimeType?: string | null }>;
+  reactions?: Record<string, Array<{ id: string; userId: string; username: string; displayName: string }>>;
 };
 
 export type MessageGroup = {
