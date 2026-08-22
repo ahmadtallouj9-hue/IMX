@@ -106,12 +106,15 @@ interface CallOverlayProps {
   onToggleVideo: () => void;
   onToggleScreenShare?: () => void;
   screenSharing?: boolean;
+  remoteScreenSharing?: boolean;
+  canScreenShare?: boolean;
 }
 
 export function CallOverlay({
   callState, callInfo, localStream, remoteStream, muted, videoOff,
   callError, callDuration, onAccept, onReject, onEnd,
   onToggleMute, onToggleVideo, onToggleScreenShare, screenSharing,
+  remoteScreenSharing, canScreenShare,
 }: CallOverlayProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -121,7 +124,10 @@ export function CallOverlay({
 
   const isVideo = callInfo?.mode === 'video';
   const localVideoTrack = Boolean(localStream?.getVideoTracks().some((t) => t.readyState !== 'ended'));
-  const showLocalPip = Boolean(isVideo && !videoOff && localVideoTrack);
+  const showLocalPip = Boolean(
+    (isVideo && !videoOff && localVideoTrack) || (screenSharing && localVideoTrack),
+  );
+  const showVideoSurface = Boolean(isVideo || screenSharing || remoteScreenSharing);
 
   useEffect(() => {
     const el = remoteAudioRef.current;
@@ -140,7 +146,7 @@ export function CallOverlay({
       const playPromise = el.play();
       if (playPromise) playPromise.catch(() => {});
     }
-  }, [remoteStream, callState, isVideo, screenSharing]);
+  }, [remoteStream, callState, isVideo, screenSharing, remoteScreenSharing]);
 
   useEffect(() => {
     const el = localVideoRef.current;
@@ -191,7 +197,6 @@ export function CallOverlay({
 
   const isIncoming = callState === 'ringing';
   const isOutgoing = callState === 'outgoing';
-  const showVideoSurface = Boolean(isVideo || screenSharing);
 
   if (isIncoming) {
     return (
@@ -226,10 +231,16 @@ export function CallOverlay({
             <div className="call-screenshare-overlay">
               <MiniAvatar user={{ displayName: callInfo.peerName, avatarUrl: callInfo.peerAvatar }} size="lg" />
               <span className="call-video-name">{callInfo.peerName}</span>
-              <span className="call-video-status">{callError || `Screen share · ${formatDuration(callDuration)}`}</span>
+              <span className="call-video-status">{callError || `Sharing screen · ${formatDuration(callDuration)}`}</span>
             </div>
           )}
-          {isVideo && (
+          {remoteScreenSharing && !screenSharing && !isVideo && (
+            <div className="call-screenshare-overlay">
+              <span className="call-video-name">{callInfo.peerName}</span>
+              <span className="call-video-status">{callError || `Viewing screen · ${formatDuration(callDuration)}`}</span>
+            </div>
+          )}
+          {(isVideo || remoteScreenSharing || screenSharing) && (
             <div className="call-video-header">
               <span className="call-video-name">{callInfo.peerName}</span>
               <span className="call-video-status">{callError || formatDuration(callDuration)}</span>
@@ -237,7 +248,7 @@ export function CallOverlay({
           )}
         </div>
       )}
-      {!isVideo && !screenSharing && (
+      {!showVideoSurface && (
         <div className="call-voice-container">
           <MiniAvatar user={{ displayName: callInfo.peerName, avatarUrl: callInfo.peerAvatar }} size="xl" />
           <h2>{callInfo.peerName}</h2>
@@ -255,15 +266,17 @@ export function CallOverlay({
         >
           {muted ? <MicOffIcon /> : <MicIcon />}
         </button>
-        <button
-          className={`call-ctrl ${videoOff ? 'active' : ''}`}
-          onClick={onToggleVideo}
-          aria-label={videoOff ? 'Camera off' : 'Camera on'}
-          aria-pressed={!videoOff}
-        >
-          {videoOff ? <CamOffIcon /> : <CamIcon />}
-        </button>
-        {onToggleScreenShare && (
+        {isVideo && (
+          <button
+            className={`call-ctrl ${videoOff ? 'active' : ''}`}
+            onClick={onToggleVideo}
+            aria-label={videoOff ? 'Camera off' : 'Camera on'}
+            aria-pressed={!videoOff}
+          >
+            {videoOff ? <CamOffIcon /> : <CamIcon />}
+          </button>
+        )}
+        {canScreenShare && onToggleScreenShare && (
           <button
             className={`call-ctrl ${screenSharing ? 'active' : ''}`}
             onClick={onToggleScreenShare}

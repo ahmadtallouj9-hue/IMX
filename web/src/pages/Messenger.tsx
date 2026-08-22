@@ -1799,6 +1799,8 @@ export function Messenger() {
         onToggleVideo={webrtc.toggleVideo}
         onToggleScreenShare={webrtc.toggleScreenShare}
         screenSharing={webrtc.screenSharing}
+        remoteScreenSharing={webrtc.remoteScreenSharing}
+        canScreenShare={webrtc.canScreenShare}
       />
       <CustomizationPanel isOpen={customOpen} onClose={() => setCustomOpen(false)} me={me} />
     </div>

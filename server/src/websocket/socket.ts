@@ -10,8 +10,8 @@ let io: SocketIOServer;
 // Map userId -> Set of socket ids (user can have multiple devices)
 const onlineUsers = new Map<string, Set<string>>();
 
-// Active calls: conversationId -> { callerId, calleeId }
-const activeCalls = new Map<string, { callerId: string; calleeId: string }>();
+// Active calls: conversationId -> { callerId, calleeId, answered }
+const activeCalls = new Map<string, { callerId: string; calleeId: string; answered: boolean }>();
 
 export function getIO(): SocketIOServer {
   return io;
@@ -279,7 +279,14 @@ export function setupSocketIO(app: FastifyInstance): void {
         return;
       }
 
-      activeCalls.set(data.conversationId, { callerId: userId, calleeId: data.calleeId });
+      activeCalls.set(data.conversationId, { callerId: userId, calleeId: data.calleeId, answered: false });
+      // Auto-expire unanswered rings so a dropped "no answer" can't lock the conversation
+      setTimeout(() => {
+        const current = activeCalls.get(data.conversationId);
+        if (current && !current.answered && current.callerId === userId && current.calleeId === data.calleeId) {
+          activeCalls.delete(data.conversationId);
+        }
+      }, 50000);
 
       const caller = await prisma.user.findUnique({
         where: { id: userId },
@@ -302,7 +309,7 @@ export function setupSocketIO(app: FastifyInstance): void {
             userId: data.calleeId,
             type: 'INCOMING_CALL',
             title: `${callerName} is calling`,
-            body: 'Voice call',
+            body: data.mode === 'video' ? 'Video call' : 'Voice call',
             data: JSON.stringify({ conversationId: data.conversationId, callerId: userId }),
           },
         });
@@ -321,6 +328,7 @@ export function setupSocketIO(app: FastifyInstance): void {
       if (!data?.conversationId || !data?.answer) return;
       const call = activeCalls.get(data.conversationId);
       if (!call || call.calleeId !== userId) return;
+      call.answered = true;
 
       const callerSockets = onlineUsers.get(call.callerId);
       if (callerSockets) {
@@ -374,6 +382,38 @@ export function setupSocketIO(app: FastifyInstance): void {
         }
       }
       activeCalls.delete(data.conversationId);
+    });
+
+    socket.on('call:renegotiate', async (data: { conversationId: string; targetUserId: string; description: unknown }) => {
+      if (!data?.conversationId || !data?.targetUserId || !data?.description) return;
+      const call = activeCalls.get(data.conversationId);
+      if (!call) return;
+      if (call.callerId !== userId && call.calleeId !== userId) return;
+      const targetSockets = onlineUsers.get(data.targetUserId);
+      if (!targetSockets) return;
+      for (const sid of targetSockets) {
+        io.to(sid).emit('call:renegotiate', {
+          conversationId: data.conversationId,
+          description: data.description,
+          fromUserId: userId,
+        });
+      }
+    });
+
+    socket.on('call:media-state', async (data: { conversationId: string; targetUserId: string; screenSharing?: boolean }) => {
+      if (!data?.conversationId || !data?.targetUserId) return;
+      const call = activeCalls.get(data.conversationId);
+      if (!call) return;
+      if (call.callerId !== userId && call.calleeId !== userId) return;
+      const targetSockets = onlineUsers.get(data.targetUserId);
+      if (!targetSockets) return;
+      for (const sid of targetSockets) {
+        io.to(sid).emit('call:media-state', {
+          conversationId: data.conversationId,
+          screenSharing: Boolean(data.screenSharing),
+          fromUserId: userId,
+        });
+      }
     });
 
     socket.on('disconnect', async () => {
