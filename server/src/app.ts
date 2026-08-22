@@ -121,6 +121,7 @@ export function buildApp(): FastifyInstance {
       '/icon-192.png': 'image/png',
       '/icon-512.png': 'image/png',
       '/sw.js': 'text/javascript; charset=utf-8',
+      '/download.html': 'text/html; charset=utf-8',
     };
     for (const [route, type] of Object.entries(publicFiles)) {
       app.get(route, async (_req, reply) => {
@@ -152,10 +153,16 @@ export function buildApp(): FastifyInstance {
     reply.header('Cache-Control', 'no-cache').type('text/html').send(loadDownloadPage());
   });
 
+  app.get('/download.html', async (_req, reply) => {
+    reply.header('Cache-Control', 'no-cache').type('text/html').send(loadDownloadPage());
+  });
+
   // --- App downloads hosted on this website (not itch.io) ---
   const apkPath = [
     join(uploadsDir, 'imx.apk'),
     join(process.cwd(), 'uploads', 'imx.apk'),
+    join(process.cwd(), 'downloads', 'imx.apk'),
+    join(process.cwd(), '..', 'server', 'downloads', 'imx.apk'),
   ].find((p) => existsSync(p));
   const windowsPath = [
     join(uploadsDir, 'imx-windows.zip'),
@@ -163,6 +170,8 @@ export function buildApp(): FastifyInstance {
     join(uploadsDir, 'imx.zip'),
     join(process.cwd(), 'uploads', 'imx-windows.zip'),
     join(process.cwd(), 'uploads', 'imx-windows.exe'),
+    join(process.cwd(), 'downloads', 'imx-windows.zip'),
+    join(process.cwd(), 'downloads', 'imx-windows.exe'),
   ].find((p) => existsSync(p));
 
   async function sendFileDownload(
@@ -173,7 +182,7 @@ export function buildApp(): FastifyInstance {
   ) {
     if (!filePath || !existsSync(filePath)) {
       return reply.code(404).type('text/html').send(
-        '<!DOCTYPE html><html><body style="font-family:system-ui;background:#0f1419;color:#fff;padding:40px;text-align:center"><h1>File not uploaded yet</h1><p style="color:#9aa3af">Place the build in server/uploads and try again.</p><p><a href="/get" style="color:#e85d04">Back to downloads</a></p></body></html>',
+        '<!DOCTYPE html><html><body style="font-family:system-ui;background:#0f1419;color:#fff;padding:40px;text-align:center"><h1>File not uploaded yet</h1><p style="color:#9aa3af">Place the build in server/downloads and try again.</p><p><a href="https://imx-cbf0.onbelmo.uk/download.html" style="color:#e85d04">Back to downloads</a></p></body></html>',
       );
     }
     const name = basename(filePath);

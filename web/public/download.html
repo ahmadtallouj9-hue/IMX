@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f1419" />
+  <meta name="description" content="Download IMX for Android and Windows — real-time messaging, friends, and private chats." />
+  <title>IMX — Download</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0f1419;
+      --bg-2: #171d25;
+      --surface: #1e2630;
+      --line: rgba(255,255,255,0.08);
+      --text: #f4f6f8;
+      --muted: #9aa3af;
+      --accent: #e85d04;
+      --accent-soft: rgba(232, 93, 4, 0.16);
+      --android: #2ea44f;
+      --shadow: 0 24px 80px rgba(0,0,0,0.45);
+      --font: 'Sora', system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { min-height: 100%; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      overflow-x: hidden;
+    }
+    .stage {
+      position: relative;
+      min-height: 100dvh;
+      display: grid;
+      place-items: center;
+      padding: clamp(24px, 5vw, 48px) 20px;
+    }
+    .glow {
+      position: absolute; inset: 0; pointer-events: none;
+      background:
+        radial-gradient(60% 45% at 15% 10%, rgba(232,93,4,0.22), transparent 55%),
+        radial-gradient(50% 40% at 90% 80%, rgba(46,164,79,0.12), transparent 50%),
+        linear-gradient(180deg, #121820 0%, var(--bg) 55%);
+    }
+    .grid {
+      position: absolute; inset: 0; opacity: 0.25; pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(circle at 40% 30%, #000 15%, transparent 70%);
+    }
+    .card {
+      position: relative; z-index: 1;
+      width: min(720px, 100%);
+      background: color-mix(in srgb, var(--bg-2) 92%, transparent);
+      border: 1px solid var(--line);
+      border-radius: 32px;
+      padding: clamp(28px, 5vw, 44px);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+      animation: rise 0.55s ease both;
+    }
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: none; }
+    }
+    .brand-row {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 28px;
+    }
+    .mark {
+      width: 44px; height: 44px; border-radius: 14px;
+      background: linear-gradient(145deg, #ff7a2f, var(--accent));
+      box-shadow: 0 10px 28px rgba(232,93,4,0.35);
+    }
+    .brand-name {
+      font-size: 1.1rem; font-weight: 800; letter-spacing: -0.03em;
+    }
+    .live {
+      margin-left: auto;
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 12px; border-radius: 999px;
+      background: var(--accent-soft); color: #ffb077;
+      font-size: 0.75rem; font-weight: 600;
+    }
+    .live i {
+      width: 7px; height: 7px; border-radius: 50%; background: #34d399;
+      animation: pulse 1.8s ease infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
+    .hero-brand {
+      font-size: clamp(3.6rem, 14vw, 6.5rem);
+      font-weight: 800;
+      letter-spacing: -0.07em;
+      line-height: 0.88;
+      margin: 0 0 14px;
+    }
+    .lead {
+      max-width: 34ch;
+      color: var(--muted);
+      font-size: 1.1rem;
+      font-weight: 500;
+      margin-bottom: 28px;
+    }
+    .downloads {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .dl {
+      display: flex; flex-direction: column; gap: 10px;
+      text-align: left;
+      padding: 18px;
+      border-radius: 20px;
+      border: 1px solid var(--line);
+      background: var(--surface);
+      color: inherit;
+      text-decoration: none;
+      transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+    }
+    .dl:hover {
+      transform: translateY(-2px);
+      border-color: color-mix(in srgb, var(--accent) 55%, var(--line));
+      background: color-mix(in srgb, var(--surface) 80%, var(--accent-soft));
+    }
+    .dl-top {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    }
+    .dl-icon {
+      width: 42px; height: 42px; border-radius: 14px;
+      display: grid; place-items: center;
+      background: var(--accent);
+      color: #fff;
+    }
+    .dl.android .dl-icon { background: var(--android); }
+    .dl-icon svg { width: 22px; height: 22px; fill: currentColor; }
+    .dl strong { display: block; font-size: 1rem; font-weight: 700; }
+    .dl small { color: var(--muted); font-size: 0.8rem; }
+    .dl-cta {
+      margin-top: 4px;
+      font-size: 0.82rem; font-weight: 700; color: var(--accent);
+    }
+    .dl.android .dl-cta { color: #6ee7a0; }
+    .meta {
+      display: flex; flex-wrap: wrap; gap: 10px 16px;
+      color: var(--muted); font-size: 0.8rem; margin-bottom: 28px;
+    }
+    .web-link {
+      display: inline-flex; align-items: center; gap: 8px;
+      color: var(--text); font-weight: 650; text-decoration: none;
+      padding: 12px 16px; border-radius: 14px;
+      border: 1px solid var(--line); background: transparent;
+    }
+    .web-link:hover { border-color: var(--accent); color: #ffb077; }
+    @media (max-width: 640px) {
+      .downloads { grid-template-columns: 1fr; }
+      .brand-row { flex-wrap: wrap; }
+      .live { margin-left: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="glow" aria-hidden="true"></div>
+    <div class="grid" aria-hidden="true"></div>
+    <main class="card">
+      <div class="brand-row">
+        <span class="mark" aria-hidden="true"></span>
+        <span class="brand-name">IMX</span>
+        <span class="live"><i></i> Free to download</span>
+      </div>
+
+      <h1 class="hero-brand">IMX</h1>
+      <p class="lead">Quiet chats. Fast replies. Grab the app for your phone or PC.</p>
+
+      <div class="downloads">
+        <a class="dl android" href="https://imx-cbf0.onbelmo.uk/download/android" download="imx.apk">
+          <div class="dl-top">
+            <span class="dl-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M17.523 15.34a1.08 1.08 0 01-1.08-1.08V9.74a1.08 1.08 0 112.16 0v4.52c0 .597-.483 1.08-1.08 1.08zm-11.046 0a1.08 1.08 0 01-1.08-1.08V9.74a1.08 1.08 0 112.16 0v4.52c0 .597-.483 1.08-1.08 1.08zM7.05 5.2l-.95-1.64a.45.45 0 01.16-.61.45.45 0 01.62.15l.98 1.7A7.8 7.8 0 0112 4.2c1.42 0 2.76.37 3.94 1.02l.98-1.7a.45.45 0 01.62-.15c.22.13.3.41.15.62l-.95 1.64A7.86 7.86 0 0119.9 12v5.4c0 .88-.72 1.6-1.6 1.6H5.7c-.88 0-1.6-.72-1.6-1.6V12c0-2.7 1.36-5.08 3.45-6.5zM9.2 20.2a.8.8 0 01-.8-.8v-1.2h1.6v1.2c0 .44-.36.8-.8.8zm5.6 0a.8.8 0 01-.8-.8v-1.2h1.6v1.2c0 .44-.36.8-.8.8z"/></svg>
+            </span>
+          </div>
+          <div>
+            <strong>Android APK</strong>
+            <small>Install from IMX</small>
+          </div>
+          <span class="dl-cta">Download APK →</span>
+        </a>
+
+        <a class="dl" href="https://imx-cbf0.onbelmo.uk/download/windows" download="imx-windows.zip">
+          <div class="dl-top">
+            <span class="dl-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M3 5.5l7.5-1.05V11H3V5.5zm8.5-1.2L21 3v8H11.5V4.3zM3 12.5h7.5V19.6L3 18.5v-6zm8.5 0H21V21l-9.5-1.35V12.5z"/></svg>
+            </span>
+          </div>
+          <div>
+            <strong>Windows</strong>
+            <small>Portable app from IMX</small>
+          </div>
+          <span class="dl-cta">Download for Windows →</span>
+        </a>
+      </div>
+
+      <div class="meta">
+        <span>v1.0 · Hosted on IMX</span>
+        <span>HTTPS · private sessions</span>
+      </div>
+
+      <a class="web-link" href="https://imx-cbf0.onbelmo.uk/">Open IMX in browser</a>
+    </main>
+  </div>
+</body>
+</html>
