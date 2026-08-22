@@ -194,6 +194,8 @@ export function buildApp(): FastifyInstance {
 
   const WINDOWS_FALLBACK_URL =
     'https://github.com/ahmadtallouj9-hue/IMX/raw/main/server/downloads/imx-windows.exe';
+  const ANDROID_FALLBACK_URL =
+    'https://github.com/ahmadtallouj9-hue/IMX/raw/main/server/downloads/imx.apk';
 
   function missingDownloadHtml(): string {
     return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>IMX Download</title>
@@ -220,12 +222,16 @@ a{color:#e85d04;font-weight:700;text-decoration:none}a:hover{text-decoration:und
     return reply.send(createReadStream(filePath));
   }
 
-  app.get('/download', async (_req, reply) =>
-    sendFileDownload(reply, findApk(), 'imx.apk', 'application/vnd.android.package-archive'),
-  );
-  app.get('/download/android', async (_req, reply) =>
-    sendFileDownload(reply, findApk(), 'imx.apk', 'application/vnd.android.package-archive'),
-  );
+  app.get('/download', async (_req, reply) => {
+    const apk = findApk();
+    if (apk) return sendFileDownload(reply, apk, 'imx.apk', 'application/vnd.android.package-archive');
+    return reply.redirect(ANDROID_FALLBACK_URL);
+  });
+  app.get('/download/android', async (_req, reply) => {
+    const apk = findApk();
+    if (apk) return sendFileDownload(reply, apk, 'imx.apk', 'application/vnd.android.package-archive');
+    return reply.redirect(ANDROID_FALLBACK_URL);
+  });
   app.get('/download/windows', async (_req, reply) => {
     const windowsPath = findWindows();
     if (windowsPath) {
