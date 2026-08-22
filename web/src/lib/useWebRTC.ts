@@ -116,14 +116,7 @@ export function useWebRTC(me: { id: string; displayName: string; avatarUrl?: str
     pc.oniceconnectionstatechange = () => {
       const iceState = pc.iceConnectionState;
       console.log('[WebRTC] ICE state:', iceState);
-      if (iceState === 'connected' || iceState === 'completed') {
-        setCallState('active');
-        setCallError(null);
-        if (!durationTimerRef.current) {
-          setCallDuration(0);
-          durationTimerRef.current = setInterval(() => setCallDuration((d) => d + 1), 1000);
-        }
-      } else if (iceState === 'failed') {
+      if (iceState === 'failed') {
         setCallError('Could not establish connection — try again');
         setTimeout(() => fullCleanup(), 3000);
       }
@@ -274,6 +267,17 @@ export function useWebRTC(me: { id: string; displayName: string; avatarUrl?: str
       }
     }
   }, [screenSharing]);
+
+  // Start duration timer when call becomes active
+  useEffect(() => {
+    if (callState === 'active') {
+      setCallError(null);
+      if (!durationTimerRef.current) {
+        setCallDuration(0);
+        durationTimerRef.current = setInterval(() => setCallDuration((d) => d + 1), 1000);
+      }
+    }
+  }, [callState]);
 
   useEffect(() => {
     const socket = connectSocket();

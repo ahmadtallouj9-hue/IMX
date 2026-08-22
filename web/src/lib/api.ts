@@ -197,7 +197,7 @@ export const api = {
   markNotificationsRead: () => request<{ success: boolean }>('/notifications/read-all', { method: 'POST' }),
 };
 
-const SAFE_UPLOAD = /^\/uploads\/[A-Za-z0-9._-]+\.(jpg|jpeg|png|gif|webp|webm|ogg|mp3|wav|m4a|mp4|mov|mkv|avi)$/i;
+const SAFE_UPLOAD = /^\/uploads\/[A-Za-z0-9._-]+$/i;
 
 export function toUploadPath(url: string): string {
   const index = url.indexOf('/uploads/');
