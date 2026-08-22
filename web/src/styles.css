@@ -1417,10 +1417,20 @@ html, body, .shell, .main, .sidebar, .bubble, .composer, .chat-head {
   inset: 0;
   background: #000;
 }
-.call-remote-video {
+.call-peer-bg {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  z-index: 0;
+}
+.call-remote-video {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 1;
 }
 .call-local-video {
   position: absolute;

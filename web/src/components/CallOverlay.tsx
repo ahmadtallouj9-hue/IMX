@@ -124,10 +124,15 @@ export function CallOverlay({
     );
   }
 
+  const peerAvatarSrc = useMediaSrc(callInfo.peerAvatar);
+
   return (
     <div className="call-overlay active">
       {(isVideo || screenSharing) && (
         <div className="call-video-container">
+          {peerAvatarSrc && (
+            <img src={peerAvatarSrc} alt="" className="call-peer-bg" />
+          )}
           <video ref={remoteVideoRef} autoPlay playsInline className="call-remote-video" />
           <video ref={localVideoRef} autoPlay playsInline muted className="call-local-video" />
           <div className="call-video-header">
