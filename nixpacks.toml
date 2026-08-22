@@ -1,0 +1,19 @@
+# Belmo / Nixpacks: always rebuild the Vite SPA during deploy
+[phases.setup]
+nixPkgs = ["nodejs_20"]
+
+[phases.install]
+cmds = [
+  "cd web && npm install",
+  "cd server && npm install"
+]
+
+[phases.build]
+cmds = [
+  "cd web && npm run build",
+  "node scripts/copy-web-dist.mjs",
+  "cd server && npx prisma generate && npx tsc"
+]
+
+[start]
+cmd = "bash start.sh"

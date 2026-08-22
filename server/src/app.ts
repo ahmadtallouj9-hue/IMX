@@ -186,7 +186,10 @@ export function buildApp(): FastifyInstance {
         '.png': 'image/png',
         '.woff2': 'font/woff2',
       };
-      return reply.type(types[extname(file)] ?? 'application/octet-stream').send(createReadStream(full));
+      return reply
+        .header('Cache-Control', 'public, max-age=31536000, immutable')
+        .type(types[extname(file)] ?? 'application/octet-stream')
+        .send(createReadStream(full));
     });
 
     const publicFiles: Record<string, string> = {
@@ -202,14 +205,18 @@ export function buildApp(): FastifyInstance {
         if (!existsSync(full)) {
           return reply.code(404).send({ error: { code: 'NOT_FOUND', message: 'Not found' } });
         }
-        return reply.type(type).send(createReadStream(full));
+        const cache = route === '/sw.js' ? 'no-cache, no-store, must-revalidate' : 'public, max-age=86400';
+        return reply.header('Cache-Control', cache).type(type).send(createReadStream(full));
       });
     }
   }
 
   app.get('/', async (_req, reply) => {
     if (spaReady) {
-      return reply.type('text/html').send(readFileSync(spaIndex, 'utf8'));
+      return reply
+        .header('Cache-Control', 'no-cache, no-store, must-revalidate')
+        .type('text/html')
+        .send(readFileSync(spaIndex, 'utf8'));
     }
     reply.type('text/html').send(DOWNLOAD_HTML);
   });
@@ -276,7 +283,10 @@ export function buildApp(): FastifyInstance {
   app.setNotFoundHandler((req, reply) => {
     const path = req.url.split('?')[0];
     if (spaReady && req.method === 'GET' && !apiPrefixes.some((prefix) => path.startsWith(prefix))) {
-      return reply.type('text/html').send(readFileSync(spaIndex, 'utf8'));
+      return reply
+        .header('Cache-Control', 'no-cache, no-store, must-revalidate')
+        .type('text/html')
+        .send(readFileSync(spaIndex, 'utf8'));
     }
     reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Not found' } });
   });
