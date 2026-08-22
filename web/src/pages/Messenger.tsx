@@ -54,6 +54,7 @@ export function Messenger() {
   const [customOpen, setCustomOpen] = useState(false);
   const [fileInput, setFileInput] = useState<'image' | 'video' | 'file' | null>(null);
   const [friendsOpen, setFriendsOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [imageBusy, setImageBusy] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [recording, setRecording] = useState(false);
@@ -740,7 +741,10 @@ export function Messenger() {
     : undefined;
 
   return (
-    <div className={`shell ${conversationId ? 'chat-open' : ''}`}>
+    <div className={`shell ${conversationId ? 'chat-open' : ''} ${sidebarOpen ? 'sidebar-open' : ''}`}>
+      <button className="mobile-menu" type="button" onClick={() => setSidebarOpen((v) => !v)} aria-label="Toggle menu">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+      </button>
       <aside className="sidebar">
         <header className="sidebar-head">
           <div className="brand compact">
@@ -842,7 +846,7 @@ export function Messenger() {
                 key={conv.id}
                 className={`row conv ${conv.id === conversationId ? 'active' : ''}`}
                 type="button"
-                onClick={() => navigate(`/c/${conv.id}`)}
+                onClick={() => { navigate(`/c/${conv.id}`); setSidebarOpen(false); }}
               >
                 <Avatar user={other ?? { id: conv.id, username: name, displayName: name, avatarUrl: conv.imageUrl }} online={!!online && conv.type === 'DIRECT'} />
                 <span className="grow">
@@ -869,16 +873,28 @@ export function Messenger() {
 
       <main className="main" data-theme={active?.theme ?? 'chatter'}>
         {!conversationId && (
-          <div className="empty center">
-            <div className="empty-icon" aria-hidden><IconChat /></div>
-            <h2>Pick a conversation</h2>
-            <p>Search for a person or open a thread from the left.</p>
+          <div className="empty center welcome-screen">
+            <div className="welcome-logo">
+              <span className="logo-mark" />
+            </div>
+            <h2>Welcome to IMX</h2>
+            <p>Your conversations, your way. Fully customizable.</p>
+            <div className="welcome-actions">
+              <button className="btn primary" type="button" onClick={() => setFriendsOpen(true)}>
+                <IconUsers /> Find Friends
+              </button>
+              <button className="btn" type="button" onClick={() => setCustomOpen(true)}>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+                Customize
+              </button>
+            </div>
+            <p className="welcome-hint">Search for someone in the sidebar to start chatting.</p>
           </div>
         )}
         {conversationId && (
           <>
             <header className="chat-head">
-              <button className="icon-btn back" type="button" onClick={() => navigate('/')} aria-label="Back">
+              <button className="icon-btn back" type="button" onClick={() => { navigate('/'); setSidebarOpen(true); }} aria-label="Back">
                 <IconBack />
               </button>
               <button className="row plain" type="button" onClick={() => (peer ? setViewedUser(peer) : setDetailsOpen(true))}>
