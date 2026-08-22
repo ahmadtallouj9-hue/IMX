@@ -397,6 +397,7 @@ export function Messenger() {
     setGroupOpen(false);
     setGroupTitle('');
     setGroupPicks([]);
+    setQuery('');
     await loadConversations();
     joinConversation(res.conversationId);
     navigate(`/c/${res.conversationId}`);
@@ -1414,33 +1415,119 @@ export function Messenger() {
       )}
 
       {groupOpen && (
-        <div className="overlay" role="dialog" aria-modal="true" aria-label="New group" onClick={() => setGroupOpen(false)}>
-          <form className="sheet" onClick={(e) => e.stopPropagation()} onSubmit={(e) => void createGroup(e)}>
-            <h2>New group</h2>
-            <label>
-              Group name
-              <input value={groupTitle} onChange={(e) => setGroupTitle(e.target.value)} required />
-            </label>
-            <label>
-              Add people
-              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search usernames" />
-            </label>
-            <div className="picks">
-              {groupPicks.map((p) => (
-                <button key={p.id} type="button" onClick={() => setGroupPicks((curr) => curr.filter((x) => x.id !== p.id))}>
-                  {p.displayName} ×
-                </button>
-              ))}
-            </div>
-            {people.map((person) => (
-              <button key={person.id} className="row" type="button" onClick={() => setGroupPicks((curr) => curr.some((p) => p.id === person.id) ? curr : [...curr, person])}>
-                <Avatar user={person} />
-                <span>{person.displayName}</span>
+        <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="new-group-title" onClick={() => setGroupOpen(false)}>
+          <form className="sheet group-sheet" onClick={(e) => e.stopPropagation()} onSubmit={(e) => void createGroup(e)}>
+            <header className="group-head">
+              <div>
+                <p className="group-kicker">Create</p>
+                <h2 id="new-group-title">New group</h2>
+              </div>
+              <button className="icon-btn" type="button" onClick={() => setGroupOpen(false)} aria-label="Close">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
               </button>
-            ))}
-            <button className="btn primary" type="submit" disabled={groupPicks.length === 0 || !groupTitle.trim()}>
-              Create group
-            </button>
+            </header>
+
+            <div className="group-preview" aria-hidden="true">
+              <div className="group-preview-stack">
+                {groupPicks.slice(0, 4).map((p) => (
+                  <span key={p.id} className="group-preview-av">
+                    <Avatar user={p} />
+                  </span>
+                ))}
+                {groupPicks.length === 0 && <span className="group-preview-empty"><IconUsers /></span>}
+              </div>
+              <div className="group-preview-meta">
+                <strong>{groupTitle.trim() || 'Untitled group'}</strong>
+                <small>
+                  {groupPicks.length === 0
+                    ? 'Add at least one person'
+                    : `${groupPicks.length} member${groupPicks.length === 1 ? '' : 's'} selected`}
+                </small>
+              </div>
+            </div>
+
+            <label className="group-field">
+              Group name
+              <input
+                value={groupTitle}
+                onChange={(e) => setGroupTitle(e.target.value)}
+                placeholder="e.g. Weekend plans"
+                required
+                autoFocus
+              />
+            </label>
+
+            <section className="group-section">
+              <div className="group-section-head">
+                <h3>Members</h3>
+                {groupPicks.length > 0 && <span>{groupPicks.length}</span>}
+              </div>
+              {groupPicks.length > 0 && (
+                <div className="group-chips">
+                  {groupPicks.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className="group-chip"
+                      onClick={() => setGroupPicks((curr) => curr.filter((x) => x.id !== p.id))}
+                      aria-label={`Remove ${p.displayName}`}
+                    >
+                      <Avatar user={p} />
+                      <span>{p.displayName}</span>
+                      <em aria-hidden="true">×</em>
+                    </button>
+                  ))}
+                </div>
+              )}
+              <label className="group-field">
+                Add people
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search usernames"
+                  aria-label="Search people to add"
+                />
+              </label>
+              <div className="group-people">
+                {query.trim() && people.length === 0 && (
+                  <p className="group-empty">No users match “{query.trim()}”</p>
+                )}
+                {!query.trim() && (
+                  <p className="group-empty">Type a username to find people</p>
+                )}
+                {people.map((person) => {
+                  const picked = groupPicks.some((p) => p.id === person.id);
+                  return (
+                    <button
+                      key={person.id}
+                      className={`group-person ${picked ? 'picked' : ''}`}
+                      type="button"
+                      onClick={() =>
+                        setGroupPicks((curr) =>
+                          curr.some((p) => p.id === person.id)
+                            ? curr.filter((p) => p.id !== person.id)
+                            : [...curr, person],
+                        )
+                      }
+                    >
+                      <Avatar user={person} />
+                      <span className="pref-copy">
+                        <strong>{person.displayName}</strong>
+                        <small>@{person.username}</small>
+                      </span>
+                      <span className="group-person-action">{picked ? 'Added' : 'Add'}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+
+            <footer className="group-foot">
+              <button className="btn" type="button" onClick={() => setGroupOpen(false)}>Cancel</button>
+              <button className="btn primary" type="submit" disabled={groupPicks.length === 0 || !groupTitle.trim()}>
+                Create group
+              </button>
+            </footer>
           </form>
         </div>
       )}

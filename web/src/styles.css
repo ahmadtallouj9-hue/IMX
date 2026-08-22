@@ -844,6 +844,120 @@ html.light .profile-hero {
 .person-cta {
   width: calc(100% - 40px); margin: 0 auto; justify-content: center;
 }
+
+/* New group sheet */
+.group-sheet {
+  width: min(440px, 100%);
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: min(640px, calc(100dvh - 32px));
+}
+.group-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  padding: 20px 20px 0;
+}
+.group-kicker {
+  margin: 0 0 2px; text-transform: uppercase; letter-spacing: 0.1em;
+  font-size: 0.7rem; font-weight: 700; color: var(--muted);
+}
+.group-head h2 { margin: 0; font-size: 1.25rem; letter-spacing: -0.02em; }
+.group-preview {
+  display: flex; align-items: center; gap: 14px;
+  margin: 16px 20px 0; padding: 14px;
+  border-radius: 18px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.group-preview-stack { display: flex; align-items: center; min-width: 56px; }
+.group-preview-av {
+  width: 40px; height: 40px; border-radius: 50%;
+  border: 2px solid var(--bg-2); margin-left: -10px; overflow: hidden;
+  background: var(--accent-soft);
+}
+.group-preview-av:first-child { margin-left: 0; }
+.group-preview-av .avatar { width: 100%; height: 100%; font-size: 0.85rem; }
+.group-preview-empty {
+  width: 48px; height: 48px; border-radius: 16px;
+  display: grid; place-items: center;
+  background: var(--accent-soft); color: var(--accent);
+}
+.group-preview-empty svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.75; }
+.group-preview-meta { display: grid; gap: 2px; min-width: 0; }
+.group-preview-meta strong {
+  font-size: 0.98rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.group-preview-meta small { color: var(--muted); font-size: 0.8rem; }
+.group-field {
+  display: grid !important; gap: 6px;
+  margin: 16px 20px 0;
+  font-size: 0.8rem; font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.group-field input {
+  text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--text);
+}
+.group-section {
+  display: grid; gap: 10px;
+  margin: 16px 20px 0;
+  min-height: 0;
+  flex: 1;
+}
+.group-section-head {
+  display: flex; align-items: center; justify-content: space-between;
+}
+.group-section-head h3 {
+  margin: 0; font-size: 0.72rem; font-weight: 700; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.08em;
+}
+.group-section-head span {
+  min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px;
+  background: var(--accent-soft); color: var(--accent);
+  font-size: 0.75rem; font-weight: 700;
+  display: inline-grid; place-items: center;
+}
+.group-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.group-chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 4px 10px 4px 4px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--surface);
+  color: var(--text); font-size: 0.82rem; font-weight: 600; cursor: pointer;
+}
+.group-chip .avatar { width: 28px; height: 28px; font-size: 0.7rem; }
+.group-chip em { font-style: normal; color: var(--muted); font-weight: 700; }
+.group-chip:hover { border-color: var(--accent); color: var(--accent); }
+.group-section .group-field { margin: 0; }
+.group-people {
+  display: grid; gap: 2px;
+  max-height: 220px; overflow: auto;
+  border: 1px solid var(--line); border-radius: 16px;
+  background: var(--surface);
+}
+.group-empty {
+  margin: 0; padding: 18px 14px; text-align: center;
+  color: var(--muted); font-size: 0.85rem;
+}
+.group-person {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; padding: 10px 12px; text-align: left;
+  border: 0; border-bottom: 1px solid var(--line-soft);
+  background: transparent; color: inherit; cursor: pointer;
+}
+.group-person:last-child { border-bottom: 0; }
+.group-person:hover { background: var(--accent-soft); }
+.group-person.picked { background: color-mix(in srgb, var(--accent-soft) 70%, transparent); }
+.group-person-action {
+  margin-left: auto; font-size: 0.78rem; font-weight: 700; color: var(--accent);
+}
+.group-person.picked .group-person-action { color: var(--muted); }
+.group-foot {
+  display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap;
+  padding: 16px 20px 20px; margin-top: 16px;
+  border-top: 1px solid var(--line-soft);
+}
+.group-foot .btn { min-width: 110px; justify-content: center; }
 .row.plain { padding: 0; min-height: 0; width: auto; border-radius: 0; }
 
 .custom-head { display: flex; align-items: center; justify-content: space-between; }
