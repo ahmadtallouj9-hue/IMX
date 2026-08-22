@@ -131,6 +131,24 @@ export function Messenger() {
   }, []);
 
   useEffect(() => {
+    setReactMenuId(null);
+    setReactAllOpen(false);
+  }, [conversationId]);
+
+  useEffect(() => {
+    if (!reactMenuId) return;
+    function onPointerDown(e: PointerEvent) {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      if (target.closest('.react-picker') || target.closest('[data-react-trigger]')) return;
+      setReactMenuId(null);
+      setReactAllOpen(false);
+    }
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, [reactMenuId]);
+
+  useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key !== 'Escape') return;
       if (webrtc.callState !== 'idle') return;
@@ -765,13 +783,13 @@ export function Messenger() {
     } catch {}
   }
 
-  function openReactMenu(messageId: string) {
+  function openReactMenu(messageId: string, expandAll = false) {
     setReactMenuId((id) => {
-      if (id === messageId) {
+      if (id === messageId && !expandAll) {
         setReactAllOpen(false);
         return null;
       }
-      setReactAllOpen(false);
+      setReactAllOpen(expandAll);
       return messageId;
     });
   }
@@ -1086,7 +1104,12 @@ export function Messenger() {
                           const quoted = message.replyToId ? msgMap.get(message.replyToId) ?? null : null;
                         const isDeleted = message.body === null && (message.attachments?.length ?? 0) === 0;
                         return (
-                        <div id={`msg-${message.id}`} key={message.id} className={`bubble ${message.type === 'IMAGE' ? 'has-image' : ''} ${message.type === 'AUDIO' ? 'has-audio' : ''} ${message.type === 'VIDEO' ? 'has-video' : ''}`}>
+                        <div
+                          id={`msg-${message.id}`}
+                          key={message.id}
+                          className={`msg-unit ${mine ? 'mine' : ''} ${reactMenuId === message.id ? 'reacting' : ''}`}
+                        >
+                        <div className={`bubble ${message.type === 'IMAGE' ? 'has-image' : ''} ${message.type === 'AUDIO' ? 'has-audio' : ''} ${message.type === 'VIDEO' ? 'has-video' : ''}`}>
                           {message.replyToId && (
                             <button className="quote" type="button" onClick={() => { const el = document.getElementById(`msg-${message.replyToId}`); el?.scrollIntoView({ behavior: 'smooth', block: 'center' }); }}>
                               <strong>{quoted?.sender.displayName ?? 'Original message'}</strong>
@@ -1094,8 +1117,15 @@ export function Messenger() {
                             </button>
                           )}
                           <div className="msg-actions">
-                            <button type="button" title="React" aria-label="React" className="react-btn" onClick={() => openReactMenu(message.id)}>
-                              <span>😊</span>
+                            <button
+                              type="button"
+                              title="React"
+                              aria-label="React"
+                              data-react-trigger
+                              className={`react-btn ${reactMenuId === message.id ? 'active' : ''}`}
+                              onClick={() => openReactMenu(message.id)}
+                            >
+                              <IconReact />
                             </button>
                             <button type="button" title="Reply" aria-label="Reply" onClick={() => setReplyTo(message)}><IconReply /></button>
                             {message.sender.id === me.id && !isDeleted && message.body && (
@@ -1117,45 +1147,6 @@ export function Messenger() {
                             )}
                             <button type="button" title="Forward" aria-label="Forward" onClick={() => setForwardMsg(message)}><IconForward /></button>
                           </div>
-                          {reactMenuId === message.id && (
-                            <div className={`react-picker ${mine ? 'mine' : ''}`} role="dialog" aria-label="Add reaction">
-                              <div className="react-quick">
-                                {QUICK_REACTIONS.map((emoji) => (
-                                  <button
-                                    key={emoji}
-                                    type="button"
-                                    className="react-quick-btn"
-                                    onClick={() => pickReaction(message.id, emoji)}
-                                  >
-                                    {emoji}
-                                  </button>
-                                ))}
-                                <button
-                                  type="button"
-                                  className={`react-quick-more ${reactAllOpen ? 'open' : ''}`}
-                                  aria-label="More emojis"
-                                  aria-expanded={reactAllOpen}
-                                  onClick={() => setReactAllOpen((v) => !v)}
-                                >
-                                  +
-                                </button>
-                              </div>
-                              {reactAllOpen && (
-                                <div className="react-all-grid">
-                                  {EMOJIS.map((e) => (
-                                    <button
-                                      key={e}
-                                      type="button"
-                                      className="emoji-btn"
-                                      onClick={() => pickReaction(message.id, e)}
-                                    >
-                                      {e}
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          )}
                           {isDeleted ? (
                             <p className="deleted">This message was deleted</p>
                           ) : (
@@ -1191,8 +1182,9 @@ export function Messenger() {
                               <button
                                 type="button"
                                 className="reaction-add"
+                                data-react-trigger
                                 aria-label="Add reaction"
-                                onClick={() => openReactMenu(message.id)}
+                                onClick={() => openReactMenu(message.id, true)}
                               >
                                 +
                               </button>
@@ -1206,6 +1198,59 @@ export function Messenger() {
                               {mine && ` · ${receiptLabel(message, me.id)}`}
                             </span>
                           )}
+                        </div>
+                        {reactMenuId === message.id && (
+                          <div className={`react-picker ${reactAllOpen ? 'expanded' : ''} ${mine ? 'mine' : ''}`} role="dialog" aria-label="Add reaction">
+                            <div className="react-quick">
+                              {QUICK_REACTIONS.map((emoji) => {
+                                const on = message.reactions?.[emoji]?.some((u) => u.userId === me.id) ?? false;
+                                return (
+                                  <button
+                                    key={emoji}
+                                    type="button"
+                                    className={`react-quick-btn ${on ? 'on' : ''}`}
+                                    aria-pressed={on}
+                                    title={emoji}
+                                    onClick={() => pickReaction(message.id, emoji)}
+                                  >
+                                    {emoji}
+                                  </button>
+                                );
+                              })}
+                              <span className="react-quick-sep" aria-hidden="true" />
+                              <button
+                                type="button"
+                                className={`react-quick-more ${reactAllOpen ? 'open' : ''}`}
+                                aria-label="More emojis"
+                                aria-expanded={reactAllOpen}
+                                onClick={() => setReactAllOpen((v) => !v)}
+                              >
+                                +
+                              </button>
+                            </div>
+                            {reactAllOpen && (
+                              <div className="react-all">
+                                <p className="react-all-label">All emojis</p>
+                                <div className="react-all-grid">
+                                  {EMOJIS.map((e) => {
+                                    const on = message.reactions?.[e]?.some((u) => u.userId === me.id) ?? false;
+                                    return (
+                                      <button
+                                        key={e}
+                                        type="button"
+                                        className={`emoji-btn ${on ? 'on' : ''}`}
+                                        aria-pressed={on}
+                                        onClick={() => pickReaction(message.id, e)}
+                                      >
+                                        {e}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
                         </div>
                         );
                       })}
@@ -2028,6 +2073,15 @@ function IconClose() {
   return (
     <svg {...iconProps()}>
       <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
+  );
+}
+function IconReact() {
+  return (
+    <svg {...iconProps()}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M8.5 10h.01M15.5 10h.01" />
+      <path d="M8.2 14.2a4.2 4.2 0 0 0 7.6 0" />
     </svg>
   );
 }
