@@ -108,7 +108,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
               </a>
             </div>
             <a className="auth-get-app" href="https://imx-cbf0.onbelmo.uk/download.html">
-              All downloads
+              More info
               <span aria-hidden="true">→</span>
             </a>
           </div>
