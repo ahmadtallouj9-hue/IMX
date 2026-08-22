@@ -12,95 +12,18 @@ import { registerRoutes } from './routes';
 import { errorHandler } from './middleware/error-handler';
 import { setupSocketIO } from './websocket/socket';
 
-const DOWNLOAD_HTML = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>IMX — Download</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:#09090b;color:#fff;min-height:100vh;overflow-x:hidden}
-.bg-glow{position:fixed;top:-200px;left:50%;transform:translateX(-50%);width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(99,102,241,0.15) 0%,transparent 70%);pointer-events:none;z-index:0}
-.container{max-width:520px;margin:0 auto;padding:clamp(32px,8vw,60px) 20px;position:relative;z-index:1;text-align:center}
-.badge{display:inline-flex;align-items:center;gap:6px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.2);padding:6px 14px;border-radius:100px;font-size:0.8rem;font-weight:500;color:#818cf8;margin-bottom:28px}
-.badge .dot{width:6px;height:6px;background:#34d399;border-radius:50%;animation:pulse 2s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
-.logo{width:100px;height:100px;border-radius:28px;margin:0 auto 28px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;box-shadow:0 20px 60px rgba(99,102,241,0.3)}
-.logo svg{width:54px;height:54px;fill:#fff}
-h1{font-size:clamp(2rem,8vw,2.8rem);font-weight:900;line-height:1.1;margin-bottom:12px;letter-spacing:-0.03em}
-h1 span{background:linear-gradient(135deg,#818cf8,#c084fc);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.subtitle{font-size:1.05rem;color:#71717a;margin-bottom:40px;line-height:1.5}
-.features{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:40px}
-.feature{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:16px;padding:20px 12px}
-.feature .icon{font-size:24px;margin-bottom:8px}
-.feature h3{font-size:0.8rem;font-weight:600;margin-bottom:4px}
-.feature p{font-size:0.7rem;color:#71717a;line-height:1.3}
-.download-btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;background:linear-gradient(135deg,#6366f1,#7c3aed);color:#fff;text-decoration:none;padding:16px 28px;border-radius:16px;font-size:0.95rem;font-weight:700;transition:all 0.2s;box-shadow:0 8px 32px rgba(99,102,241,0.35);border:none;cursor:pointer;min-height:52px;flex:1 1 200px}
-.download-btn:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(99,102,241,0.5)}
-.download-btn:active{transform:translateY(0)}
-.download-btn svg{width:22px;height:22px;fill:#fff;flex-shrink:0}
-.download-btn.android{background:linear-gradient(135deg,#34d399,#059669);box-shadow:0 8px 32px rgba(52,211,153,0.35)}
-.download-btn.android:hover{box-shadow:0 12px 40px rgba(52,211,153,0.5)}
-.download-buttons{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
-.meta{display:flex;align-items:center;justify-content:center;gap:20px;margin-top:20px;color:#52525b;font-size:0.8rem;flex-wrap:wrap}
-.meta span{display:flex;align-items:center;gap:5px}
-.screenshots{display:flex;gap:12px;margin-top:48px;justify-content:center;overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch}
-.phone{width:140px;height:280px;background:#18181b;border-radius:20px;border:2px solid #27272a;overflow:hidden;position:relative;flex:0 0 auto}
-.phone .notch{width:50px;height:6px;background:#27272a;border-radius:10px;margin:8px auto 0}
-.phone .screen{margin:12px 8px;border-radius:12px;height:calc(100% - 30px);display:flex;flex-direction:column;overflow:hidden}
-.phone:nth-child(1) .screen{background:linear-gradient(180deg,#1e1b4b,#0f0f0f)}
-.phone:nth-child(2) .screen{background:linear-gradient(180deg,#0f0f0f,#1e1b4b)}
-.phone:nth-child(3) .screen{background:#18181b}
-.screen-header{padding:10px 10px 6px;font-size:0.55rem;font-weight:700;color:#a1a1aa}
-.screen-bubble{margin:4px 10px;padding:6px 10px;border-radius:10px;font-size:0.45rem;color:#d4d4d8;line-height:1.3;max-width:80%}
-.screen-bubble.sent{background:#6366f1;margin-left:auto;color:#fff}
-.screen-bubble.received{background:#27272a}
-.footer{margin-top:60px;color:#3f3f46;font-size:0.75rem}
-@media(max-width:520px){
-.features{grid-template-columns:1fr;gap:8px}
-.feature{display:flex;align-items:center;gap:12px;text-align:left;padding:14px 16px}
-.feature .icon{margin:0;font-size:22px}
-.phone{width:120px;height:240px}
+function loadDownloadPage(): string {
+  const candidates = [
+    join(process.cwd(), 'download-site', 'index.html'),
+    join(process.cwd(), '..', 'download-site', 'index.html'),
+    join(__dirname, '..', '..', '..', 'download-site', 'index.html'),
+    join(process.cwd(), 'web-dist', 'download.html'),
+  ];
+  for (const p of candidates) {
+    if (existsSync(p)) return readFileSync(p, 'utf8');
+  }
+  return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>IMX Download</title></head><body style="font-family:system-ui;background:#0f1419;color:#fff;padding:40px;text-align:center"><h1>IMX</h1><p><a href="/download/android" style="color:#e85d04">Android APK</a> · <a href="/download/windows" style="color:#e85d04">Windows</a></p><p><a href="/" style="color:#9aa3af">Open web app</a></p></body></html>';
 }
-</style>
-</head>
-<body>
-<div class="bg-glow"></div>
-<div class="container">
-<div class="badge"><span class="dot"></span> Free &amp; open for everyone</div>
-<div class="logo">
-<svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
-</div>
-<h1>Chat with <span>anyone</span></h1>
-<p class="subtitle">Real-time messaging, friend requests, and private conversations — all in one beautiful app.</p>
-<div class="features">
-<div class="feature"><div class="icon">&#x1F4AC;</div><h3>Live Chat</h3><p>Instant messages with typing indicators</p></div>
-<div class="feature"><div class="icon">&#x1F465;</div><h3>Friends</h3><p>Find &amp; connect with people</p></div>
-<div class="feature"><div class="icon">&#x1F512;</div><h3>Secure</h3><p>Private &amp; encrypted sessions</p></div>
-</div>
-<div class="download-buttons">
-<a href="https://files.catbox.moe/j3q4ux.zip" class="download-btn" download>
-<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 000-1.41l-2.34-2.34a1 1 0 00-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-Download for Windows
-</a>
-<a href="https://files.catbox.moe/v76do1.apk" class="download-btn android" download>
-<svg viewBox="0 0 24 24"><path d="M6 18c0 .55.45 1 1 1h1v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h2v3.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5V19h1c.55 0 1-.45 1-1V8H6v10zM3.5 8C2.67 8 2 8.67 2 9.5v7c0 .83.67 1.5 1.5 1.5S5 17.33 5 16.5v-7C5 8.67 4.33 8 3.5 8zm17 0c-.83 0-1.5.67-1.5 1.5v7c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5v-7c0-.83-.67-1.5-1.5-1.5zm-4.97-5.84l1.3-1.3c.2-.2.2-.51 0-.71-.2-.2-.51-.2-.71 0l-1.48 1.48A5.84 5.84 0 0012 1c-.96 0-1.86.23-2.66.63L7.85.15c-.2-.2-.51-.2-.71 0-.2.2-.2.51 0 .71l1.31 1.31A5.983 5.983 0 006 7h12c0-2.12-1.06-3.99-2.47-5.17zM10 5H9V4h1v1zm5 0h-1V4h1v1z"/></svg>
-Download for Android
-</a>
-</div>
-<div class="meta"><span>&#x2B50; v1.0</span><span>&#x1F512; HTTPS Secured</span></div>
-<div class="screenshots">
-<div class="phone"><div class="notch"></div><div class="screen"><div class="screen-header">Messages</div><div class="screen-bubble received">Hey, are you free tonight?</div><div class="screen-bubble sent">Yeah! What's the plan?</div><div class="screen-bubble received">Let's grab dinner at 7</div><div class="screen-bubble sent">Sounds great!</div></div></div>
-<div class="phone"><div class="notch"></div><div class="screen"><div class="screen-header">Friends</div><div class="screen-bubble received" style="background:#6366f1;color:#fff;max-width:100%;margin:6px 8px;border-radius:8px;">+ Ahmad</div><div class="screen-bubble received" style="background:#27272a;max-width:100%;margin:4px 8px;border-radius:8px;">+ Sarah</div><div class="screen-bubble received" style="background:#27272a;max-width:100%;margin:4px 8px;border-radius:8px;">+ Mike</div></div></div>
-<div class="phone"><div class="notch"></div><div class="screen"><div class="screen-header">Login</div><div class="screen-bubble received" style="background:#27272a;max-width:100%;margin:16px 10px;border-radius:6px;font-size:0.4rem;">Email</div><div class="screen-bubble received" style="background:#27272a;max-width:100%;margin:4px 10px;border-radius:6px;font-size:0.4rem;">Password</div><div class="screen-bubble sent" style="max-width:100%;margin:10px 10px 0;border-radius:6px;font-size:0.45rem;text-align:center;">Sign In</div></div></div>
-</div>
-<p class="footer">IMX &copy; 2026 &middot; Built with React + Node.js</p>
-</div>
-</body>
-</html>`;
 
 export function buildApp(): FastifyInstance {
   const app = Fastify({
@@ -168,7 +91,7 @@ export function buildApp(): FastifyInstance {
   const spaReady = existsSync(spaIndex);
   const apiPrefixes = [
     '/auth', '/users', '/conversations', '/groups', '/uploads',
-    '/health', '/search', '/notifications', '/friends', '/download', '/socket.io',
+    '/health', '/search', '/notifications', '/friends', '/download', '/get', '/apps', '/socket.io',
   ];
 
   if (spaReady) {
@@ -218,22 +141,57 @@ export function buildApp(): FastifyInstance {
         .type('text/html')
         .send(readFileSync(spaIndex, 'utf8'));
     }
-    reply.type('text/html').send(DOWNLOAD_HTML);
+    reply.header('Cache-Control', 'no-cache').type('text/html').send(loadDownloadPage());
   });
 
   app.get('/get', async (_req, reply) => {
-    reply.type('text/html').send(DOWNLOAD_HTML);
+    reply.header('Cache-Control', 'no-cache').type('text/html').send(loadDownloadPage());
   });
 
-  // --- APK download ---
-  const apkPath = join(uploadsDir, 'imx.apk');
-  app.get('/download', async (_req, reply) => {
-    if (!existsSync(apkPath)) {
-      return reply.code(404).send({ error: 'APK not found' });
+  app.get('/apps', async (_req, reply) => {
+    reply.header('Cache-Control', 'no-cache').type('text/html').send(loadDownloadPage());
+  });
+
+  // --- App downloads hosted on this website (not itch.io) ---
+  const apkPath = [
+    join(uploadsDir, 'imx.apk'),
+    join(process.cwd(), 'uploads', 'imx.apk'),
+  ].find((p) => existsSync(p));
+  const windowsPath = [
+    join(uploadsDir, 'imx-windows.zip'),
+    join(uploadsDir, 'imx-windows.exe'),
+    join(uploadsDir, 'imx.zip'),
+    join(process.cwd(), 'uploads', 'imx-windows.zip'),
+    join(process.cwd(), 'uploads', 'imx-windows.exe'),
+  ].find((p) => existsSync(p));
+
+  async function sendFileDownload(
+    reply: { code: (n: number) => any; type: (t: string) => any; header: (k: string, v: string) => any; send: (b: unknown) => unknown },
+    filePath: string | undefined,
+    fallbackName: string,
+    mime: string,
+  ) {
+    if (!filePath || !existsSync(filePath)) {
+      return reply.code(404).type('text/html').send(
+        '<!DOCTYPE html><html><body style="font-family:system-ui;background:#0f1419;color:#fff;padding:40px;text-align:center"><h1>File not uploaded yet</h1><p style="color:#9aa3af">Place the build in server/uploads and try again.</p><p><a href="/get" style="color:#e85d04">Back to downloads</a></p></body></html>',
+      );
     }
-    reply.header('Content-Type', 'application/vnd.android.package-archive');
-    reply.header('Content-Disposition', 'attachment; filename="imx.apk"');
-    return reply.send(createReadStream(apkPath));
+    const name = basename(filePath);
+    reply.header('Content-Type', mime);
+    reply.header('Content-Disposition', 'attachment; filename="' + (name || fallbackName) + '"');
+    reply.header('Cache-Control', 'no-cache');
+    return reply.send(createReadStream(filePath));
+  }
+
+  app.get('/download', async (_req, reply) =>
+    sendFileDownload(reply, apkPath, 'imx.apk', 'application/vnd.android.package-archive'),
+  );
+  app.get('/download/android', async (_req, reply) =>
+    sendFileDownload(reply, apkPath, 'imx.apk', 'application/vnd.android.package-archive'),
+  );
+  app.get('/download/windows', async (_req, reply) => {
+    const mime = windowsPath && windowsPath.endsWith('.exe') ? 'application/octet-stream' : 'application/zip';
+    return sendFileDownload(reply, windowsPath, 'imx-windows.zip', mime);
   });
 
   const uploadMime: Record<string, string> = {
