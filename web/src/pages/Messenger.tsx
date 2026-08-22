@@ -1362,8 +1362,86 @@ const MsgImage = React.memo(function MsgImage({ url, fileName, onOpen }: { url: 
 
 const MsgAudio = React.memo(function MsgAudio({ url }: { url: string }) {
   const src = useMediaSrc(url);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const [current, setCurrent] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const [dragX, setDragX] = useState(0);
+  const sliderRef = useRef<HTMLDivElement>(null);
+
   if (!src) return <div className="msg-image-fallback">Couldn't load audio</div>;
-  return <audio controls src={src} className="msg-audio" />;
+
+  function fmt(s: number) {
+    const m = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${m}:${sec.toString().padStart(2, '0')}`;
+  }
+
+  function togglePlay() {
+    const a = audioRef.current;
+    if (!a) return;
+    if (a.paused) { a.play(); setPlaying(true); } else { a.pause(); setPlaying(false); }
+  }
+
+  function onSliderClick(e: React.MouseEvent<HTMLDivElement>) {
+    const a = audioRef.current;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    if (a && duration) { a.currentTime = pct * duration; setCurrent(pct * duration); }
+  }
+
+  function onSliderDown(e: React.MouseEvent<HTMLDivElement>) {
+    setDragging(true);
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    setDragX(pct);
+    function onMove(ev: MouseEvent) {
+      const p = Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width));
+      setDragX(p);
+    }
+    function onUp(ev: MouseEvent) {
+      const p = Math.max(0, Math.min(1, (ev.clientX - rect.left) / rect.width));
+      const a = audioRef.current;
+      if (a && duration) { a.currentTime = p * duration; setCurrent(p * duration); }
+      setDragging(false);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    }
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }
+
+  const pct = duration > 0 ? (dragging ? dragX * 100 : (current / duration) * 100) : 0;
+
+  return (
+    <div className="wa-audio">
+      <audio
+        ref={audioRef}
+        src={src}
+        preload="metadata"
+        onLoadedMetadata={() => { if (audioRef.current) setDuration(audioRef.current.duration); }}
+        onTimeUpdate={() => { if (audioRef.current && !dragging) setCurrent(audioRef.current.currentTime); }}
+        onEnded={() => { setPlaying(false); setCurrent(0); }}
+        style={{ display: 'none' }}
+      />
+      <button className="wa-audio-play" type="button" onClick={togglePlay}>
+        {playing ? (
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+        ) : (
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        )}
+      </button>
+      <span className="wa-audio-time">{fmt(current)}</span>
+      <div className="wa-audio-slider" ref={sliderRef} onMouseDown={onSliderDown}>
+        <div className="wa-audio-track">
+          <div className="wa-audio-fill" style={{ width: `${pct}%` }} />
+          <div className="wa-audio-thumb" style={{ left: `${pct}%` }} />
+        </div>
+      </div>
+      <span className="wa-audio-time">{fmt(duration)}</span>
+    </div>
+  );
 });
 
 const MsgVideo = React.memo(function MsgVideo({ url }: { url: string; fileName?: string | null }) {

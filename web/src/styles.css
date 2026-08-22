@@ -1080,6 +1080,72 @@ html.light .quote { background: rgba(0, 0, 0, 0.05); }
   height: 40px;
   border-radius: var(--r-md);
 }
+.wa-audio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 240px;
+  max-width: 320px;
+}
+.wa-audio-play {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: #00a884;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+.wa-audio-play:active { transform: scale(0.9); }
+.wa-audio-time {
+  font-size: 0.72rem;
+  color: var(--muted);
+  min-width: 30px;
+  font-variant-numeric: tabular-nums;
+}
+.wa-audio-slider {
+  flex: 1;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 0 2px;
+}
+.wa-audio-track {
+  width: 100%;
+  height: 3px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 2px;
+  position: relative;
+}
+.wa-audio-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  background: #00a884;
+  border-radius: 2px;
+  pointer-events: none;
+}
+.wa-audio-thumb {
+  position: absolute;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  pointer-events: none;
+}
+html.light .wa-audio-track { background: rgba(0,0,0,0.15); }
+html.light .wa-audio-fill { background: #00a884; }
+html.light .wa-audio-play { background: #00a884; }
+html.light .wa-audio-time { color: #667781; }
 .msg-video {
   display: block;
   width: 100%;
@@ -1498,6 +1564,7 @@ html, body, .shell, .main, .sidebar, .bubble, .composer, .chat-head {
 .notif-content { flex: 1; min-width: 0; }
 .notif-content strong { font-size: 0.85rem; }
 .notif-content p { margin: 2px 0 0; font-size: 0.8rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 
 
 
