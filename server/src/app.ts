@@ -121,7 +121,6 @@ export function buildApp(): FastifyInstance {
       '/icon-192.png': 'image/png',
       '/icon-512.png': 'image/png',
       '/sw.js': 'text/javascript; charset=utf-8',
-      '/download.html': 'text/html; charset=utf-8',
     };
     for (const [route, type] of Object.entries(publicFiles)) {
       app.get(route, async (_req, reply) => {
