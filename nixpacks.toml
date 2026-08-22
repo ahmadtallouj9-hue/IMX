@@ -1,11 +1,7 @@
-# Belmo / Nixpacks build for IMX
-# Keep this aligned with the Belmo dashboard build command.
-
-[variables]
-NODE_ENV = "development"
+# Belmo / Nixpacks — production-safe SPA + API build
 
 [phases.setup]
-nixPkgs = ["nodejs_20"]
+nixPkgs = ["nodejs_20", "bash"]
 
 [phases.install]
 cmds = [

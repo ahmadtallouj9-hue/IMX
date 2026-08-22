@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config';
+import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
@@ -18,9 +18,5 @@ export default defineConfig({
       '/notifications': 'http://localhost:8080',
       '/friends': 'http://localhost:8080',
     },
-  },
-  test: {
-    environment: 'node',
-    include: ['src/**/*.test.ts'],
   },
 });
