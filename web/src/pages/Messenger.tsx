@@ -57,6 +57,8 @@ export function Messenger() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [imageBusy, setImageBusy] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const [reactMenuId, setReactMenuId] = useState<string | null>(null);
+  const [reactAllOpen, setReactAllOpen] = useState(false);
   const [recording, setRecording] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [lightboxZoom, setLightboxZoom] = useState(1);
@@ -144,12 +146,13 @@ export function Messenger() {
       if (notifsOpen) { setNotifsOpen(false); return; }
       if (settingsOpen) { setSettingsOpen(false); return; }
       if (emojiOpen) { setEmojiOpen(false); return; }
+      if (reactMenuId) { setReactMenuId(null); setReactAllOpen(false); return; }
       if (searchOpen) { setSearchOpen(false); setSearchResults([]); setSearchQuery(''); return; }
       if (replyTo || editingId) { setReplyTo(null); setEditingId(null); if (editingId) setDraft(''); }
     }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [webrtc.callState, customOpen, lightboxSrc, groupCallPicker, forwardMsg, groupOpen, friendsOpen, detailsOpen, viewedUser, profileOpen, notifsOpen, settingsOpen, emojiOpen, searchOpen, replyTo, editingId]);
+  }, [webrtc.callState, customOpen, lightboxSrc, groupCallPicker, forwardMsg, groupOpen, friendsOpen, detailsOpen, viewedUser, profileOpen, notifsOpen, settingsOpen, emojiOpen, reactMenuId, searchOpen, replyTo, editingId]);
 
   useEffect(() => {
     const socket = connectSocket();
@@ -744,7 +747,7 @@ export function Messenger() {
     }
   }
 
-  const QUICK_REACTIONS = ['❤️', '👍', '😂', '😮', '😢', '🔥'];
+  const QUICK_REACTIONS = ['❤️', '👍', '😂', '😮', '🔥'];
 
   async function toggleReaction(messageId: string, emoji: string) {
     if (!conversationId) return;
@@ -760,6 +763,23 @@ export function Messenger() {
         setMessages((curr) => curr.map((m) => (m.id === messageId ? { ...m, reactions: res.reactions } : m)));
       }
     } catch {}
+  }
+
+  function openReactMenu(messageId: string) {
+    setReactMenuId((id) => {
+      if (id === messageId) {
+        setReactAllOpen(false);
+        return null;
+      }
+      setReactAllOpen(false);
+      return messageId;
+    });
+  }
+
+  function pickReaction(messageId: string, emoji: string) {
+    void toggleReaction(messageId, emoji);
+    setReactMenuId(null);
+    setReactAllOpen(false);
   }
 
   const title = active
@@ -1074,7 +1094,9 @@ export function Messenger() {
                             </button>
                           )}
                           <div className="msg-actions">
-                            <button type="button" title="React" aria-label="React" className="react-btn" onClick={() => toggleReaction(message.id, '❤️')}><span>❤️</span></button>
+                            <button type="button" title="React" aria-label="React" className="react-btn" onClick={() => openReactMenu(message.id)}>
+                              <span>😊</span>
+                            </button>
                             <button type="button" title="Reply" aria-label="Reply" onClick={() => setReplyTo(message)}><IconReply /></button>
                             {message.sender.id === me.id && !isDeleted && message.body && (
                               <>
@@ -1095,6 +1117,45 @@ export function Messenger() {
                             )}
                             <button type="button" title="Forward" aria-label="Forward" onClick={() => setForwardMsg(message)}><IconForward /></button>
                           </div>
+                          {reactMenuId === message.id && (
+                            <div className={`react-picker ${mine ? 'mine' : ''}`} role="dialog" aria-label="Add reaction">
+                              <div className="react-quick">
+                                {QUICK_REACTIONS.map((emoji) => (
+                                  <button
+                                    key={emoji}
+                                    type="button"
+                                    className="react-quick-btn"
+                                    onClick={() => pickReaction(message.id, emoji)}
+                                  >
+                                    {emoji}
+                                  </button>
+                                ))}
+                                <button
+                                  type="button"
+                                  className={`react-quick-more ${reactAllOpen ? 'open' : ''}`}
+                                  aria-label="More emojis"
+                                  aria-expanded={reactAllOpen}
+                                  onClick={() => setReactAllOpen((v) => !v)}
+                                >
+                                  +
+                                </button>
+                              </div>
+                              {reactAllOpen && (
+                                <div className="react-all-grid">
+                                  {EMOJIS.map((e) => (
+                                    <button
+                                      key={e}
+                                      type="button"
+                                      className="emoji-btn"
+                                      onClick={() => pickReaction(message.id, e)}
+                                    >
+                                      {e}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
                           {isDeleted ? (
                             <p className="deleted">This message was deleted</p>
                           ) : (
@@ -1127,7 +1188,14 @@ export function Messenger() {
                                   </button>
                                 );
                               })}
-                              <button type="button" className="reaction-add" onClick={() => toggleReaction(message.id, '👍')}>+</button>
+                              <button
+                                type="button"
+                                className="reaction-add"
+                                aria-label="Add reaction"
+                                onClick={() => openReactMenu(message.id)}
+                              >
+                                +
+                              </button>
                             </div>
                           )}
                             </>

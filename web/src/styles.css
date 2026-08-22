@@ -1215,15 +1215,45 @@ html.light .profile-hero {
   overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
 }
 
-.react-btn { display: none; }
-.bundle:hover .react-btn { display: inline-grid; place-items: center; }
 .react-btn span { font-size: 14px; min-width: 24px; min-height: 24px; display: grid; place-items: center; }
+.react-picker {
+  position: absolute; top: -8px; right: 0; transform: translateY(-100%);
+  z-index: 5; display: grid; gap: 8px; padding: 8px;
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: 18px;
+  box-shadow: var(--shadow-lg); animation: fadeUp var(--dur-fast) var(--ease);
+}
+.react-picker.mine { right: auto; left: 0; }
+.react-quick { display: flex; align-items: center; gap: 2px; }
+.react-quick-btn {
+  width: 36px; height: 36px; border: 0; border-radius: 12px;
+  background: transparent; font-size: 1.2rem;
+  display: grid; place-items: center;
+}
+.react-quick-btn:hover { background: var(--accent-soft); transform: scale(1.12); }
+.react-quick-more {
+  width: 36px; height: 36px; border-radius: 12px;
+  border: 1px dashed var(--line); background: var(--surface);
+  color: var(--muted); font-size: 1.15rem; font-weight: 700;
+  display: grid; place-items: center;
+}
+.react-quick-more:hover, .react-quick-more.open {
+  color: var(--accent); border-color: var(--accent); background: var(--accent-soft);
+}
+.react-all-grid {
+  display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px;
+  max-width: 280px; max-height: 180px; overflow: auto; padding: 2px;
+}
 .reactions-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
 .reaction-chip { display: inline-flex; align-items: center; gap: 3px; padding: 2px 8px; min-height: 24px; border-radius: var(--r-pill); border: 1px solid var(--line-soft); background: var(--surface); font-size: 13px; }
 .reaction-chip.mine { background: var(--accent-soft); border-color: var(--accent); }
 .reaction-chip em { font-style: normal; font-size: 11px; color: var(--muted); font-weight: 600; }
-.reaction-add { display: none; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; border: 1px dashed var(--line); background: transparent; color: var(--muted); }
-.bundle:hover .reaction-add { display: inline-flex; }
+.reaction-add {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; border-radius: 50%;
+  border: 1px dashed var(--line); background: transparent; color: var(--muted);
+  font-size: 14px; font-weight: 700; line-height: 1;
+}
+.reaction-add:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
 
 html, body, .shell, .main, .sidebar, .bubble, .composer, .chat-head {
   transition: background-color var(--dur-slow) var(--ease), color var(--dur-slow) var(--ease), border-color var(--dur-slow) var(--ease);
