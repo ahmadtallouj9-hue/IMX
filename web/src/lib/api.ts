@@ -3,23 +3,79 @@ import type { ChatMessage, Conversation, PublicUser } from './types';
 const TOKEN_KEY = 'cove.accessToken';
 const REFRESH_KEY = 'cove.refreshToken';
 const API_KEY = 'cove.apiUrl';
-const DEFAULT_NATIVE_API = 'https://imx-cbf0.onbelmo.uk';
+export const DEFAULT_NATIVE_API = 'https://imx-cbf0.onbelmo.uk';
+
+function isLocalApiUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.toLowerCase();
+    return (
+      host === 'localhost' ||
+      host === '127.0.0.1' ||
+      host === '0.0.0.0' ||
+      host === '::1' ||
+      host.startsWith('192.168.') ||
+      host.startsWith('10.') ||
+      /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)
+    );
+  } catch {
+    return false;
+  }
+}
+
+function isNativePlatform(): boolean {
+  try {
+    return Boolean((globalThis as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.());
+  } catch {
+    return false;
+  }
+}
+
+/** Make sure the Android/iOS app points at production IMX, not an old LAN address. */
+export function ensureNativeApiUrl(): string {
+  if (!isNativePlatform()) return getApiUrl();
+  try {
+    const stored = globalThis.localStorage?.getItem(API_KEY)?.replace(/\/$/, '') ?? '';
+    if (!stored || isLocalApiUrl(stored)) {
+      globalThis.localStorage?.setItem(API_KEY, DEFAULT_NATIVE_API);
+      return DEFAULT_NATIVE_API;
+    }
+    return stored;
+  } catch {
+    return DEFAULT_NATIVE_API;
+  }
+}
 
 export function getApiUrl(): string {
   try {
     const stored = globalThis.localStorage?.getItem(API_KEY);
-    if (stored) return stored.replace(/\/$/, '');
+    if (stored) {
+      const cleaned = stored.replace(/\/$/, '');
+      // Web: never call a private/LAN API — that hangs on "Opening IMX…"
+      if (!isNativePlatform() && isLocalApiUrl(cleaned)) {
+        try {
+          globalThis.localStorage?.removeItem(API_KEY);
+        } catch {
+          /* ignore */
+        }
+      } else if (isNativePlatform() && isLocalApiUrl(cleaned)) {
+        // Native production app: migrate off old Wi‑Fi/dev server URLs
+        try {
+          globalThis.localStorage?.setItem(API_KEY, DEFAULT_NATIVE_API);
+        } catch {
+          /* ignore */
+        }
+        return DEFAULT_NATIVE_API;
+      } else {
+        return cleaned;
+      }
+    }
   } catch {
     /* ignore */
   }
   const fromEnv = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
   if (fromEnv) return fromEnv;
-  try {
-    const cap = (globalThis as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
-    if (cap?.isNativePlatform?.()) return DEFAULT_NATIVE_API;
-  } catch {
-    /* ignore */
-  }
+  if (isNativePlatform()) return DEFAULT_NATIVE_API;
   return '';
 }
 

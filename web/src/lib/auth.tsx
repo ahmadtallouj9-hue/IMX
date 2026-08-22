@@ -20,8 +20,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    api
-      .me()
+    const boot = Promise.race([
+      api.me(),
+      new Promise<never>((_, reject) => {
+        window.setTimeout(() => reject(new Error('boot-timeout')), 8000);
+      }),
+    ]);
+
+    boot
       .then((res) => {
         if (cancelled) return;
         setUser(res.user);

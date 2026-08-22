@@ -6,7 +6,7 @@ import { AuthProvider } from './lib/auth';
 import { listenForInstall } from './lib/install';
 import './styles.css';
 
-const BUILD_ID = 'ui-v6-reactions-fix';
+const BUILD_ID = 'ui-v6-android-boot';
 
 listenForInstall();
 void import('@capacitor/app').then(({ App }) => {
@@ -24,6 +24,9 @@ async function bootServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
   const prev = localStorage.getItem('imx.build');
   if (prev !== BUILD_ID) {
+    // Only force one reload per tab session to avoid an infinite Opening IMX loop
+    const reloadKey = `imx.reload.${BUILD_ID}`;
+    const alreadyReloaded = sessionStorage.getItem(reloadKey) === '1';
     const regs = await navigator.serviceWorker.getRegistrations();
     await Promise.all(regs.map((r) => r.unregister()));
     if ('caches' in window) {
@@ -31,8 +34,11 @@ async function bootServiceWorker() {
       await Promise.all(keys.map((k) => caches.delete(k)));
     }
     localStorage.setItem('imx.build', BUILD_ID);
-    window.location.reload();
-    return;
+    if (!alreadyReloaded) {
+      sessionStorage.setItem(reloadKey, '1');
+      window.location.reload();
+      return;
+    }
   }
   await navigator.serviceWorker.register(`/sw.js?v=${BUILD_ID}`);
 }
