@@ -1,16 +1,21 @@
-# Belmo / Nixpacks: always rebuild the Vite SPA during deploy
+# Belmo / Nixpacks build for IMX
+# Keep this aligned with the Belmo dashboard build command.
+
+[variables]
+NODE_ENV = "development"
+
 [phases.setup]
 nixPkgs = ["nodejs_20"]
 
 [phases.install]
 cmds = [
-  "cd web && npm install",
-  "cd server && npm install"
+  "npm install --prefix web",
+  "npm install --prefix server"
 ]
 
 [phases.build]
 cmds = [
-  "cd web && npm run build",
+  "npm run build --prefix web",
   "node scripts/copy-web-dist.mjs",
   "cd server && npx prisma generate && npx tsc"
 ]
