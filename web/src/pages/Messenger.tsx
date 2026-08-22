@@ -1,6 +1,7 @@
 import React, { FormEvent, useCallback, useEffect, useMemo, useRef, useState, type SVGProps } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, ApiError, getApiUrl, setApiUrl, toUploadPath } from '../lib/api';
+import { compressImage } from '../lib/compress';
 import { useMediaSrc } from '../lib/media';
 import { canInstall, isStandalone, promptInstall } from '../lib/install';
 import { useAuth } from '../lib/auth';
@@ -418,7 +419,8 @@ export function Messenger() {
     setImageBusy(true);
     setChatError(null);
     try {
-      const uploaded = await api.upload(file);
+      const compressed = await compressImage(file);
+      const uploaded = await api.upload(compressed);
       const clientMessageId = newClientId();
       const attachments = [{ url: toUploadPath(uploaded.url), kind: 'image', fileName: uploaded.fileName }];
       const optimistic: ChatMessage = {
@@ -652,7 +654,8 @@ export function Messenger() {
     setProfileError(null);
     setAvatarBusy(true);
     try {
-      const uploaded = await api.upload(file);
+      const compressed = await compressImage(file, 512, 0.85);
+      const uploaded = await api.upload(compressed);
       const res = await api.updateMe({ avatarUrl: toUploadPath(uploaded.url) });
       setUser(res.user);
     } catch (err) {
@@ -1291,6 +1294,8 @@ export function Messenger() {
         remoteStream={webrtc.remoteStream}
         muted={webrtc.muted}
         videoOff={webrtc.videoOff}
+        callError={webrtc.callError}
+        callDuration={webrtc.callDuration}
         onAccept={() => {
           const offer = (window as any).__pendingCallOffer as RTCSessionDescriptionInit | undefined;
           const peerId = (window as any).__pendingCallPeerId as string | undefined;

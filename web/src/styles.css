@@ -1,4 +1,4 @@
-/* ─── Design tokens ─────────────────────────────────────────── */
+﻿/* â”€â”€â”€ Design tokens â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root {
   /* Brand accents (kept) */
   --accent: #2ec4b6;
@@ -82,35 +82,36 @@
 }
 
 html.light {
-  --bg: #f2f6f8;
-  --bg-2: #e8eef1;
-  --surface: #ffffff;
-  --surface-2: #f7fafb;
-  --line: #d4dee3;
-  --line-soft: rgba(212, 222, 227, 0.7);
-  --text: #16242a;
-  --muted: #5f7580;
-  --muted-2: #7a8f99;
-  --accent: #0ea5a0;
-  --accent-2: #e05d3d;
-  --accent-soft: rgba(14, 165, 160, 0.1);
-  --accent-ring: rgba(14, 165, 160, 0.25);
-  --accent-2-soft: rgba(224, 93, 61, 0.12);
-  --mine: #c7efe9;
+  --bg: #ffffff;
+  --bg-2: #f7f9f9;
+  --surface: #eff3f4;
+  --surface-2: #f7f9f9;
+  --line: #eff3f4;
+  --line-soft: rgba(239, 243, 244, 0.7);
+  --text: #0f1419;
+  --muted: #536471;
+  --muted-2: #536471;
+  --accent: #1d9bf0;
+  --accent-2: #f4212e;
+  --accent-soft: rgba(29, 155, 240, 0.08);
+  --accent-ring: rgba(29, 155, 240, 0.2);
+  --accent-2-soft: rgba(244, 33, 46, 0.08);
+  --mine: #e8f5fe;
   --theirs: #ffffff;
-  --danger: #d64545;
-  --danger-soft: rgba(214, 69, 69, 0.1);
-  --warn: #b8860b;
-  --warn-soft: rgba(184, 134, 11, 0.12);
-  --shadow-sm: 0 1px 2px rgba(30, 60, 70, 0.06);
-  --shadow-md: 0 8px 24px rgba(30, 60, 70, 0.1);
-  --shadow-lg: 0 18px 50px rgba(30, 60, 70, 0.14);
+  --danger: #f4212e;
+  --danger-soft: rgba(244, 33, 46, 0.08);
+  --warn: #ffd666;
+  --warn-soft: rgba(255, 214, 102, 0.1);
+  --success: #00ba7c;
+  --shadow-sm: 0 1px 2px rgba(15, 20, 25, 0.04);
+  --shadow-md: 0 8px 24px rgba(15, 20, 25, 0.08);
+  --shadow-lg: 0 18px 50px rgba(15, 20, 25, 0.12);
   --shadow: var(--shadow-lg);
-  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 1);
   color-scheme: light;
 }
 
-/* ─── Base ──────────────────────────────────────────────────── */
+/* â”€â”€â”€ Base â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 *,
 *::before,
 *::after { box-sizing: border-box; }
@@ -208,7 +209,7 @@ input:focus:not(:focus-visible) {
   }
 }
 
-/* ─── Brand / boot / empty ──────────────────────────────────── */
+/* â”€â”€â”€ Brand / boot / empty â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .boot, .empty {
   display: grid;
   place-items: center;
@@ -259,7 +260,7 @@ input:focus:not(:focus-visible) {
 }
 .brand.compact { font-size: 1.15rem; }
 
-/* ─── Auth ──────────────────────────────────────────────────── */
+/* â”€â”€â”€ Auth â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .auth {
   min-height: 100%;
   display: grid;
@@ -320,7 +321,7 @@ input:focus:not(:focus-visible) {
 }
 .link:hover, .switch a:hover { text-decoration: underline; }
 
-/* ─── Buttons ───────────────────────────────────────────────── */
+/* â”€â”€â”€ Buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .btn {
   min-height: 44px;
   border: 1px solid var(--line);
@@ -386,7 +387,7 @@ input:focus:not(:focus-visible) {
   border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
 }
 
-/* ─── Banners ───────────────────────────────────────────────── */
+/* â”€â”€â”€ Banners â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .banner {
   border-radius: var(--r-sm);
   padding: 10px 12px;
@@ -413,7 +414,7 @@ input:focus:not(:focus-visible) {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ─── Shell / sidebar ───────────────────────────────────────── */
+/* â”€â”€â”€ Shell / sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .shell {
   display: grid;
   grid-template-columns: var(--sidebar-w) 1fr;
@@ -566,12 +567,12 @@ input:focus:not(:focus-visible) {
   background: color-mix(in srgb, var(--bg-2) 85%, var(--surface));
 }
 
-/* ─── Avatar ────────────────────────────────────────────────── */
+/* â”€â”€â”€ Avatar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .avatar {
   width: var(--avatar);
   height: var(--avatar);
   border-radius: var(--r-lg);
-  background: linear-gradient(145deg, #234048, #1a3038);
+  background: linear-gradient(145deg, #2f3336, #1d1f23);
   display: grid;
   place-items: center;
   font-weight: 700;
@@ -606,7 +607,7 @@ html.light .avatar {
   z-index: 1;
 }
 
-/* ─── Main chat ─────────────────────────────────────────────── */
+/* â”€â”€â”€ Main chat â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .main {
   display: flex;
   flex-direction: column;
@@ -1265,7 +1266,7 @@ html, body, .shell, .main, .sidebar, .bubble, .composer, .chat-head {
     border-color var(--dur-slow) var(--ease);
 }
 
-/* ─── Responsive ────────────────────────────────────────────── */
+/* â”€â”€â”€ Responsive â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @media (max-width: 840px) {
   .auth { grid-template-columns: 1fr; }
   .auth-hero { padding: 36px 24px 8px; min-height: auto; }
@@ -1284,7 +1285,7 @@ html, body, .shell, .main, .sidebar, .bubble, .composer, .chat-head {
     font-size: 0;
   }
   .composer .btn.primary::after {
-    content: "↑";
+    content: "â†‘";
     font-size: 1.1rem;
     font-weight: 700;
   }
@@ -1297,7 +1298,7 @@ html, body, .shell, .main, .sidebar, .bubble, .composer, .chat-head {
   .composer .icon-btn[aria-label="Send video"] { display: none; }
 }
 
-/* ─── Call UI ──────────────────────────────────────────────── */
+/* â”€â”€â”€ Call UI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .call-overlay {
   position: fixed;
   inset: 0;
@@ -1326,35 +1327,25 @@ html, body, .shell, .main, .sidebar, .bubble, .composer, .chat-head {
 .call-incoming-card p { margin: 0; color: var(--muted); }
 .call-incoming-actions {
   display: flex;
-  gap: 32px;
-  margin-top: 24px;
+  gap: 40px;
+  margin-top: 32px;
 }
-.call-accept {
-  width: 72px;
-  height: 72px;
+.call-action {
+  width: 68px;
+  height: 68px;
   border-radius: 50%;
   border: none;
-  background: #22c55e;
   color: white;
   cursor: pointer;
   display: grid;
   place-items: center;
-  transition: transform 0.15s;
+  transition: transform 0.15s, box-shadow 0.15s;
 }
-.call-accept:hover { transform: scale(1.1); }
-.call-reject {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
-  border: none;
-  background: #ef4444;
-  color: white;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  transition: transform 0.15s;
-}
-.call-reject:hover { transform: scale(1.1); }
+.call-action:active { transform: scale(0.92); }
+.call-accept { background: #00ba7c; box-shadow: 0 0 20px rgba(0, 186, 124, 0.3); }
+.call-accept:hover { transform: scale(1.08); box-shadow: 0 0 30px rgba(0, 186, 124, 0.5); }
+.call-reject { background: #f4212e; box-shadow: 0 0 20px rgba(244, 33, 46, 0.3); }
+.call-reject:hover { transform: scale(1.08); box-shadow: 0 0 30px rgba(244, 33, 46, 0.5); }
 .call-video-container {
   position: absolute;
   inset: 0;
@@ -1371,11 +1362,11 @@ html, body, .shell, .main, .sidebar, .bubble, .composer, .chat-head {
   right: 20px;
   width: 140px;
   border-radius: 12px;
-  border: 2px solid rgba(255,255,255,0.3);
+  border: 2px solid rgba(255,255,255,0.15); box-shadow: 0 4px 20px rgba(0,0,0,0.5);
   object-fit: cover;
   z-index: 1;
 }
-.call-voice-container {
+.call-voice-container { position: relative; z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1387,43 +1378,59 @@ html, body, .shell, .main, .sidebar, .bubble, .composer, .chat-head {
 .call-status { color: var(--muted); margin: 0; }
 .call-controls {
   position: absolute;
-  bottom: 48px;
+  bottom: 60px;
   display: flex;
-  gap: 20px;
+  gap: 16px;
   align-items: center;
   z-index: 2;
 }
 .call-ctrl {
-  width: 56px;
-  height: 56px;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   border: none;
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.12);
   color: white;
   cursor: pointer;
   display: grid;
   place-items: center;
-  transition: background 0.15s;
+  transition: background 0.15s, transform 0.15s;
+  backdrop-filter: blur(8px);
 }
-.call-ctrl:hover { background: rgba(255, 255, 255, 0.25); }
-.call-ctrl.active { background: rgba(255, 255, 255, 0.3); }
+.call-ctrl:hover { background: rgba(255, 255, 255, 0.2); transform: scale(1.05); }
+.call-ctrl.active { background: #f4212e; }
 .call-end {
-  width: 64px;
-  height: 64px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
   border: none;
-  background: #ef4444;
+  background: #f4212e;
   color: white;
   cursor: pointer;
   display: grid;
   place-items: center;
-  transition: transform 0.15s;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 0 20px rgba(244, 33, 46, 0.3);
 }
-.call-end:hover { transform: scale(1.1); }
+.call-end:hover { transform: scale(1.08); box-shadow: 0 0 30px rgba(244, 33, 46, 0.5); }
+.call-video-header {
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  z-index: 2;
+  color: #fff;
+}
+.call-video-name { font-weight: 700; font-size: 1.1rem; }
+.call-video-status { font-size: 0.85rem; color: #71767b; }
 .call-btn-header { opacity: 0.7; }
 .call-btn-header:hover { opacity: 1; }
 
-/* ─── Notifications Panel ────────────────────────────────── */
+/* â”€â”€â”€ Notifications Panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .notif-badge {
   position: absolute;
   top: 2px;
@@ -1491,3 +1498,5 @@ html, body, .shell, .main, .sidebar, .bubble, .composer, .chat-head {
 .notif-content { flex: 1; min-width: 0; }
 .notif-content strong { font-size: 0.85rem; }
 .notif-content p { margin: 2px 0 0; font-size: 0.8rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+

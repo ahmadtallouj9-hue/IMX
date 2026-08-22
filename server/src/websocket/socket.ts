@@ -261,7 +261,7 @@ export function setupSocketIO(app: FastifyInstance): void {
 
     // --- Call signaling ---
 
-    socket.on('call:init', async (data: { conversationId: string; calleeId: string; offer: unknown }) => {
+    socket.on('call:init', async (data: { conversationId: string; calleeId: string; offer: unknown; mode?: string }) => {
       if (!data?.conversationId || !data?.calleeId || !data?.offer) return;
       const membership = await prisma.conversationMember.findUnique({
         where: { conversationId_userId: { conversationId: data.conversationId, userId } },
@@ -291,6 +291,7 @@ export function setupSocketIO(app: FastifyInstance): void {
           conversationId: data.conversationId,
           caller,
           offer: data.offer,
+          mode: data.mode || 'voice',
         });
       }
 
@@ -377,6 +378,20 @@ export function setupSocketIO(app: FastifyInstance): void {
 
     socket.on('disconnect', async () => {
       logger.info({ userId, socketId: socket.id }, 'Socket disconnected');
+
+      for (const [convId, call] of activeCalls) {
+        if (call.callerId === userId || call.calleeId === userId) {
+          const otherId = call.callerId === userId ? call.calleeId : call.callerId;
+          const otherSockets = onlineUsers.get(otherId);
+          if (otherSockets) {
+            for (const sid of otherSockets) {
+              io.to(sid).emit('call:ended', { conversationId: convId });
+            }
+          }
+          activeCalls.delete(convId);
+        }
+      }
+
       const sockets = onlineUsers.get(userId);
       if (sockets) {
         sockets.delete(socket.id);
