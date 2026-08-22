@@ -876,7 +876,7 @@ export function Messenger() {
               <span className="logo-mark" />
             </div>
             <h2>Welcome to IMX</h2>
-            <p>Your conversations, your way. Fully customizable.</p>
+            <p>Quiet surfaces. Fast replies. Yours to shape.</p>
             <div className="welcome-actions">
               <button className="btn primary" type="button" onClick={() => setFriendsOpen(true)}>
                 <IconUsers /> Find Friends

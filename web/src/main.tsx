@@ -14,7 +14,7 @@ void import('@capacitor/app').then(({ App }) => {
   });
 }).catch(() => undefined);
 void import('@capacitor/status-bar').then(({ StatusBar, Style }) => {
-  void StatusBar.setBackgroundColor({ color: '#0e1418' });
+  void StatusBar.setBackgroundColor({ color: '#090b0e' });
   void StatusBar.setStyle({ style: Style.Dark });
 }).catch(() => undefined);
 if ('serviceWorker' in navigator) {

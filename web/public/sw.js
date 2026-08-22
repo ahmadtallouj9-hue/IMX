@@ -1,4 +1,4 @@
-const CACHE = 'chatter-app-v1';
+const CACHE = 'imx-app-v2';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(['/', '/manifest.webmanifest'])));

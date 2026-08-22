@@ -7,7 +7,7 @@ interface CustomizationPanelProps {
 }
 
 const PRESET_COLORS = [
-  { name: 'Discord Blue', accent: '#5865f2', bg: '#1a1a2e', bg2: '#16213e' },
+  { name: 'IMX Teal', accent: '#0d9488', bg: '#090b0e', bg2: '#12161c' },
   { name: 'Telegram', accent: '#0088cc', bg: '#0e1621', bg2: '#17212b' },
   { name: 'WhatsApp', accent: '#00a884', bg: '#0b141a', bg2: '#111b21' },
   { name: 'Slack', accent: '#611f69', bg: '#1a1d21', bg2: '#222529' },
@@ -20,7 +20,7 @@ const PRESET_COLORS = [
 ];
 
 const LIGHT_PRESET_COLORS = [
-  { name: 'Clean White', accent: '#5865f2', bg: '#f0f2f5', bg2: '#ffffff' },
+  { name: 'Mist', accent: '#0f766e', bg: '#e8ecf1', bg2: '#ffffff' },
   { name: 'Soft Blue', accent: '#0088cc', bg: '#e8f4fd', bg2: '#ffffff' },
   { name: 'Warm', accent: '#e67e22', bg: '#fdf6ec', bg2: '#ffffff' },
   { name: 'Mint', accent: '#00a884', bg: '#e6f9f3', bg2: '#ffffff' },
@@ -28,7 +28,7 @@ const LIGHT_PRESET_COLORS = [
 ];
 
 const FONT_OPTIONS = [
-  { name: 'Inter', value: "'Inter', system-ui, sans-serif" },
+  { name: 'Outfit', value: "'Outfit', system-ui, sans-serif" },
   { name: 'System', value: "system-ui, -apple-system, 'Segoe UI', sans-serif" },
   { name: 'Roboto', value: "'Roboto', sans-serif" },
   { name: 'Poppins', value: "'Poppins', sans-serif" },
@@ -493,7 +493,7 @@ export function CustomizationPanel({ isOpen, onClose, me }: CustomizationPanelPr
                       canvas.width = 128;
                       canvas.height = 128;
                       const ctx = canvas.getContext('2d')!;
-                      ctx.fillStyle = settings.accentColor || '#6366f1';
+                      ctx.fillStyle = settings.accentColor || '#0d9488';
                       ctx.beginPath();
                       ctx.roundRect(0, 0, 128, 128, 24);
                       ctx.fill();

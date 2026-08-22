@@ -47,15 +47,17 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
   return (
     <div className="auth">
       <div className="auth-hero">
-        <div className="brand">
+        <div className="auth-hero-glow" aria-hidden="true" />
+        <p className="brand auth-brand">
           <span className="logo-mark" />
           IMX
-        </div>
-        <h1>Messages that feel instant</h1>
-        <p>Real-time chat, friends, and private conversations — clean, fast, and ready wherever you are.</p>
+        </p>
+        <h1 className="auth-wordmark" aria-hidden="true">IMX</h1>
+        <p className="auth-tagline">Chat that stays out of the way.</p>
       </div>
       <form className="auth-card" onSubmit={onSubmit}>
-        <h2>{mode === 'login' ? 'Welcome back' : 'Create your space'}</h2>
+        <h2>{mode === 'login' ? 'Sign in' : 'Join IMX'}</h2>
+        <p className="auth-card-sub">{mode === 'login' ? 'Pick up where you left off.' : 'Create an account in under a minute.'}</p>
         {mode === 'login' ? (
           <label htmlFor={`${idPrefix}-identifier`}>
             Username or email
@@ -133,7 +135,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
         {error && <div className="banner error" role="alert" id={errorId}>{error}</div>}
         <button className="btn primary" type="submit" disabled={busy}>
           {busy && <span className="btn-spinner" aria-hidden="true" />}
-          {busy ? 'Please wait…' : mode === 'login' ? 'Sign in' : 'Create account'}
+          {busy ? 'Please wait…' : mode === 'login' ? 'Continue' : 'Create account'}
         </button>
         <p className="switch">
           {mode === 'login' ? (

@@ -26,15 +26,17 @@ export function ServerSetup({ onReady }: { onReady: () => void }) {
   return (
     <div className="auth">
       <div className="auth-hero">
-        <div className="brand">
+        <div className="auth-hero-glow" aria-hidden="true" />
+        <p className="brand auth-brand">
           <span className="logo-mark" />
           IMX
-        </div>
-        <h1>Install and connect.</h1>
-        <p>This app talks to your IMX server on the same Wi‑Fi.</p>
+        </p>
+        <h1 className="auth-wordmark" aria-hidden="true">IMX</h1>
+        <p className="auth-tagline">Connect to your IMX server on the same Wi‑Fi.</p>
       </div>
       <form className="auth-card" onSubmit={(e) => void onSubmit(e)}>
         <h2>Server address</h2>
+        <p className="auth-card-sub">Enter the API URL for your host machine.</p>
         <label>
           API URL
           <input value={url} onChange={(e) => setUrl(e.target.value)} autoCapitalize="off" autoCorrect="off" required />
