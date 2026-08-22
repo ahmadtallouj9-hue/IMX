@@ -258,11 +258,11 @@ export function CustomizationPanel({ isOpen, onClose, me }: CustomizationPanelPr
   if (!isOpen) return null;
 
   const tabs = [
-    { id: 'colors' as const, label: 'Colors', icon: '🎨' },
-    { id: 'layout' as const, label: 'Layout', icon: '📐' },
-    { id: 'messages' as const, label: 'Messages', icon: '💬' },
-    { id: 'logo' as const, label: 'Logo', icon: '✨' },
-    { id: 'advanced' as const, label: 'Advanced', icon: '⚙️' },
+    { id: 'colors' as const, label: 'Colors' },
+    { id: 'layout' as const, label: 'Layout' },
+    { id: 'messages' as const, label: 'Messages' },
+    { id: 'logo' as const, label: 'Logo' },
+    { id: 'advanced' as const, label: 'More' },
   ];
 
   const presets = isLight ? LIGHT_PRESET_COLORS : PRESET_COLORS;
@@ -274,7 +274,7 @@ export function CustomizationPanel({ isOpen, onClose, me }: CustomizationPanelPr
   return (
     <div className="overlay" onClick={onClose}>
       <div
-        className="sheet wide custom-sheet"
+        className="sheet custom-sheet"
         ref={sheetRef}
         role="dialog"
         aria-modal="true"
@@ -282,8 +282,11 @@ export function CustomizationPanel({ isOpen, onClose, me }: CustomizationPanelPr
         onClick={(e) => e.stopPropagation()}
       >
         <div className="custom-head">
-          <h2 id="custom-title">Customize IMX</h2>
-          <button className="icon-btn" onClick={onClose} aria-label="Close">
+          <div>
+            <p className="custom-kicker">Appearance</p>
+            <h2 id="custom-title">Customize IMX</h2>
+          </div>
+          <button className="icon-btn" type="button" onClick={onClose} aria-label="Close">
             <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
           </button>
         </div>
@@ -292,31 +295,32 @@ export function CustomizationPanel({ isOpen, onClose, me }: CustomizationPanelPr
           {tabs.map((t) => (
             <button
               key={t.id}
+              type="button"
               role="tab"
               aria-selected={activeTab === t.id}
               className={`custom-tab ${activeTab === t.id ? 'active' : ''}`}
               onClick={() => setActiveTab(t.id)}
             >
-              {t.icon} {t.label}
+              {t.label}
             </button>
           ))}
         </div>
 
+        <div className="custom-body">
         {storageError && <div className="banner error" role="alert">{storageError}</div>}
 
         {activeTab === 'colors' && (
           <div className="custom-section">
             <div>
-              <h3>Preset Themes</h3>
+              <h3>Preset themes</h3>
               <div className="preset-grid">
                 {presets.map((p) => (
                   <button
                     key={p.name}
-                    className="preset-tile"
+                    type="button"
+                    className={`preset-tile ${settings.accentColor === p.accent ? 'active' : ''}`}
                     onClick={() => applyPreset(p)}
                     style={{
-                      borderColor: settings.accentColor === p.accent ? p.accent : undefined,
-                      borderWidth: settings.accentColor === p.accent ? 2 : undefined,
                       background: p.bg,
                       color: textColorForBg(p.bg),
                     }}
@@ -329,7 +333,7 @@ export function CustomizationPanel({ isOpen, onClose, me }: CustomizationPanelPr
             </div>
 
             <div>
-              <h3>Custom Colors</h3>
+              <h3>Custom colors</h3>
               <div className="color-grid">
                 {[
                   { key: 'accentColor', label: 'Accent' },
@@ -356,7 +360,7 @@ export function CustomizationPanel({ isOpen, onClose, me }: CustomizationPanelPr
         {activeTab === 'layout' && (
           <div className="custom-section">
             <label className="slider-field">
-              Sidebar Width
+              Sidebar width
               <div className="slider-row">
                 <input
                   type="range"
@@ -370,7 +374,7 @@ export function CustomizationPanel({ isOpen, onClose, me }: CustomizationPanelPr
             </label>
 
             <label className="slider-field">
-              Border Radius
+              Border radius
               <div className="slider-row">
                 <input
                   type="range"
@@ -384,7 +388,7 @@ export function CustomizationPanel({ isOpen, onClose, me }: CustomizationPanelPr
             </label>
 
             <label className="slider-field">
-              Avatar Radius
+              Avatar radius
               <div className="slider-row">
                 <input
                   type="range"
@@ -399,7 +403,7 @@ export function CustomizationPanel({ isOpen, onClose, me }: CustomizationPanelPr
             </label>
 
             <label className="slider-field">
-              Font Size
+              Font size
               <div className="slider-row">
                 <input
                   type="range"
@@ -417,7 +421,7 @@ export function CustomizationPanel({ isOpen, onClose, me }: CustomizationPanelPr
         {activeTab === 'messages' && (
           <div className="custom-section">
             <label className="slider-field">
-              Font Family
+              Font family
               <select
                 className="select-input"
                 value={settings.fontFamily || FONT_OPTIONS[0].value}
@@ -446,7 +450,7 @@ export function CustomizationPanel({ isOpen, onClose, me }: CustomizationPanelPr
         {activeTab === 'logo' && (
           <div className="custom-section">
             <div>
-              <h3>App Name</h3>
+              <h3>App name</h3>
               <input
                 type="text"
                 value={settings.logoText || 'IMX'}
@@ -456,7 +460,7 @@ export function CustomizationPanel({ isOpen, onClose, me }: CustomizationPanelPr
             </div>
 
             <div>
-              <h3>Logo Image</h3>
+              <h3>Logo image</h3>
               <div className="logo-row">
                 <div
                   className="logo-preview"
@@ -465,26 +469,27 @@ export function CustomizationPanel({ isOpen, onClose, me }: CustomizationPanelPr
                   {!settings.logoUrl && <span>{(settings.logoText || 'IMX')[0]}</span>}
                 </div>
                 <div>
-                  <button className="btn" onClick={() => logoInput.current?.click()}>
-                    Upload Logo
+                  <button className="btn" type="button" onClick={() => logoInput.current?.click()}>
+                    Upload logo
                   </button>
                   <input ref={logoInput} type="file" accept="image/png,image/jpeg,image/gif,image/webp,image/*" onChange={handleLogoUpload} hidden />
                   {settings.logoUrl && (
-                    <button className="btn danger" onClick={() => update('logoUrl', '')}>
+                    <button className="btn danger" type="button" onClick={() => update('logoUrl', '')}>
                       Remove
                     </button>
                   )}
-                  <p className="hint">Recommended: 256x256px PNG, max 2MB</p>
+                  <p className="hint">Recommended: 256×256 PNG, max 2MB</p>
                 </div>
               </div>
             </div>
 
             <div>
-              <h3>Preset Logos</h3>
+              <h3>Preset logos</h3>
               <div className="emoji-logo-grid">
                 {['🚀', '💎', '🔥', '⚡', '🌟', '🎯', '🎮', '💬', '🔔', '🛡️'].map((emoji) => (
                   <button
                     key={emoji}
+                    type="button"
                     className="emoji-logo-btn"
                     onClick={() => {
                       const canvas = document.createElement('canvas');
@@ -513,20 +518,19 @@ export function CustomizationPanel({ isOpen, onClose, me }: CustomizationPanelPr
         {activeTab === 'advanced' && (
           <div className="custom-section">
             <div className="custom-preview">
-              <h3>Export Settings</h3>
+              <h3>Export settings</h3>
               <p className="hint">Copy your customization settings to share or backup.</p>
-              <button className="btn" onClick={() => {
-                navigator.clipboard.writeText(JSON.stringify(settings, null, 2));
-                alert('Settings copied to clipboard!');
+              <button className="btn" type="button" onClick={() => {
+                void navigator.clipboard.writeText(JSON.stringify(settings, null, 2));
               }}>
-                Copy Settings JSON
+                Copy settings JSON
               </button>
             </div>
 
             <div className="custom-preview">
-              <h3>Import Settings</h3>
+              <h3>Import settings</h3>
               <textarea
-                placeholder="Paste settings JSON here..."
+                placeholder="Paste settings JSON here…"
                 rows={4}
                 onBlur={(e) => {
                   try {
@@ -534,36 +538,37 @@ export function CustomizationPanel({ isOpen, onClose, me }: CustomizationPanelPr
                     applyAllSettings(data);
                     setSettings(data);
                     setStorageError(persistSettings(data));
-                  } catch {}
+                  } catch { /* ignore invalid paste */ }
                 }}
               />
             </div>
 
             <div className="danger-zone">
-              <h3>Reset Everything</h3>
+              <h3>Reset everything</h3>
               <p className="hint">Restore all settings to default.</p>
               {confirmReset ? (
                 <div className="confirm-bar">
                   <span>Reset all customization?</span>
-                  <button className="btn danger" onClick={resetAll}>Yes, reset</button>
-                  <button className="btn" onClick={() => setConfirmReset(false)}>Cancel</button>
+                  <button className="btn danger" type="button" onClick={resetAll}>Yes, reset</button>
+                  <button className="btn" type="button" onClick={() => setConfirmReset(false)}>Cancel</button>
                 </div>
               ) : (
-                <button className="btn danger" onClick={() => setConfirmReset(true)}>
-                  Reset to Default
+                <button className="btn danger" type="button" onClick={() => setConfirmReset(true)}>
+                  Reset to default
                 </button>
               )}
             </div>
           </div>
         )}
+        </div>
 
         <div className="custom-footer">
           {confirmReset ? (
-            <button className="btn danger" onClick={resetAll}>Yes, reset</button>
+            <button className="btn danger" type="button" onClick={resetAll}>Yes, reset</button>
           ) : (
-            <button className="btn danger" onClick={() => setConfirmReset(true)}>Reset</button>
+            <button className="btn" type="button" onClick={() => setConfirmReset(true)}>Reset</button>
           )}
-          <button className="btn primary" onClick={onClose}>Done</button>
+          <button className="btn primary" type="button" onClick={onClose}>Done</button>
         </div>
       </div>
     </div>

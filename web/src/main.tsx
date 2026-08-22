@@ -6,7 +6,7 @@ import { AuthProvider } from './lib/auth';
 import { listenForInstall } from './lib/install';
 import './styles.css';
 
-const BUILD_ID = 'ui-v5-belmo-fix';
+const BUILD_ID = 'ui-v5-panels-all';
 
 listenForInstall();
 void import('@capacitor/app').then(({ App }) => {
