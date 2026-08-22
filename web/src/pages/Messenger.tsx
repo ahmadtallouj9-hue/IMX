@@ -49,6 +49,7 @@ export function Messenger() {
   const [profileError, setProfileError] = useState<string | null>(null);
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [groupCallPicker, setGroupCallPicker] = useState<'voice' | 'video' | null>(null);
   const [friendsOpen, setFriendsOpen] = useState(false);
   const [imageBusy, setImageBusy] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -834,34 +835,38 @@ export function Messenger() {
                   </small>
                 </span>
               </button>
-              {peer && (
-                <button
-                  className="icon-btn call-btn-header"
-                  type="button"
-                  onClick={() => {
-                    if (!peer || !conversationId) return;
+              <button
+                className="icon-btn call-btn-header"
+                type="button"
+                onClick={() => {
+                  if (!conversationId) return;
+                  if (peer) {
                     webrtc.startCall(conversationId, peer.id, peer.displayName, peer.avatarUrl, 'voice');
-                  }}
-                  aria-label="Voice call"
-                  disabled={webrtc.callState !== 'idle'}
-                >
-                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
-                </button>
-              )}
-              {peer && (
-                <button
-                  className="icon-btn call-btn-header"
-                  type="button"
-                  onClick={() => {
-                    if (!peer || !conversationId) return;
+                  } else if (active?.type === 'GROUP') {
+                    setGroupCallPicker('voice');
+                  }
+                }}
+                aria-label="Voice call"
+                disabled={webrtc.callState !== 'idle'}
+              >
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+              </button>
+              <button
+                className="icon-btn call-btn-header"
+                type="button"
+                onClick={() => {
+                  if (!conversationId) return;
+                  if (peer) {
                     webrtc.startCall(conversationId, peer.id, peer.displayName, peer.avatarUrl, 'video');
-                  }}
-                  aria-label="Video call"
-                  disabled={webrtc.callState !== 'idle'}
-                >
-                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-                </button>
-              )}
+                  } else if (active?.type === 'GROUP') {
+                    setGroupCallPicker('video');
+                  }
+                }}
+                aria-label="Video call"
+                disabled={webrtc.callState !== 'idle'}
+              >
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+              </button>
               <button className="icon-btn" type="button" onClick={() => setDetailsOpen(true)} aria-label="Chat settings">
                 <IconMore />
               </button>
@@ -1285,6 +1290,32 @@ export function Messenger() {
             <IconClose />
           </button>
           <div className="lightbox-hint">Scroll to zoom · Drag to pan · Double-click to reset</div>
+        </div>
+      )}
+      {groupCallPicker && active?.type === 'GROUP' && (
+        <div className="call-overlay incoming" onClick={() => setGroupCallPicker(null)}>
+          <div className="call-incoming-card" onClick={(e) => e.stopPropagation()}>
+            <h2>Call a member</h2>
+            <p style={{ color: 'var(--muted)', margin: '0 0 16px' }}>Select who to {groupCallPicker === 'voice' ? 'voice' : 'video'} call</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 300, overflowY: 'auto', width: '100%' }}>
+              {active.members.filter((m) => m.id !== me.id).map((m) => (
+                <button
+                  key={m.id}
+                  className="row"
+                  style={{ background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: 12, padding: '10px 16px', color: 'var(--text)', cursor: 'pointer', gap: 12 }}
+                  onClick={() => {
+                    if (!conversationId) return;
+                    webrtc.startCall(conversationId, m.id, m.displayName, m.avatarUrl, groupCallPicker);
+                    setGroupCallPicker(null);
+                  }}
+                >
+                  <Avatar user={m} />
+                  <span>{m.displayName}</span>
+                </button>
+              ))}
+            </div>
+            <button className="call-action call-reject" style={{ marginTop: 16 }} onClick={() => setGroupCallPicker(null)}>Cancel</button>
+          </div>
         </div>
       )}
       <CallOverlay
