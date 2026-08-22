@@ -80,6 +80,7 @@ export function Messenger() {
     return localStorage.getItem('imx.light') !== '0';
   });
   const [notifsOpen, setNotifsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [notifCount, setNotifCount] = useState(0);
   const [notifList, setNotifList] = useState<Array<{ id: string; type: string; title: string; body?: string; read: boolean; createdAt: string }>>([]);
 
@@ -141,13 +142,14 @@ export function Messenger() {
       if (viewedUser) { setViewedUser(null); return; }
       if (profileOpen) { setProfileOpen(false); return; }
       if (notifsOpen) { setNotifsOpen(false); return; }
+      if (settingsOpen) { setSettingsOpen(false); return; }
       if (emojiOpen) { setEmojiOpen(false); return; }
       if (searchOpen) { setSearchOpen(false); setSearchResults([]); setSearchQuery(''); return; }
       if (replyTo || editingId) { setReplyTo(null); setEditingId(null); if (editingId) setDraft(''); }
     }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [webrtc.callState, customOpen, lightboxSrc, groupCallPicker, forwardMsg, groupOpen, friendsOpen, detailsOpen, viewedUser, profileOpen, notifsOpen, emojiOpen, searchOpen, replyTo, editingId]);
+  }, [webrtc.callState, customOpen, lightboxSrc, groupCallPicker, forwardMsg, groupOpen, friendsOpen, detailsOpen, viewedUser, profileOpen, notifsOpen, settingsOpen, emojiOpen, searchOpen, replyTo, editingId]);
 
   useEffect(() => {
     const socket = connectSocket();
@@ -787,31 +789,102 @@ export function Messenger() {
             <span className="logo-mark" />
             <span className="brand-text">IMX</span>
           </div>
-          <div className="sidebar-tools">
-            <button className="icon-btn" type="button" onClick={() => { setLightMode((v) => !v); }} aria-label="Toggle light mode" title="Toggle light mode">
-              {lightMode ? <IconMoon /> : <IconSun />}
+          <div className={`sidebar-settings ${settingsOpen ? 'open' : ''}`}>
+            <button
+              className="icon-btn settings-trigger"
+              type="button"
+              aria-label="Settings menu"
+              aria-haspopup="menu"
+              aria-expanded={settingsOpen}
+              onClick={() => setSettingsOpen((v) => !v)}
+            >
+              <IconSettings />
+              {notifCount > 0 && !settingsOpen && (
+                <span className="notif-badge">{notifCount > 99 ? '99+' : notifCount}</span>
+              )}
             </button>
-            <button className="icon-btn" type="button" onClick={() => setCustomOpen(true)} aria-label="Customize" title="Customize UI">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-            </button>
-            <div className="notif-wrap">
-              <button className="icon-btn" type="button" onClick={() => {
-                setNotifsOpen((v) => !v);
-                if (!notifsOpen) {
-                  api.notifications().then((r) => setNotifList(r.notifications)).catch(() => {});
-                  api.markNotificationsRead().then(() => setNotifCount(0)).catch(() => {});
-                }
-              }} aria-label="Notifications" title="Notifications">
-                <IconBell />
-                {notifCount > 0 && <span className="notif-badge">{notifCount > 99 ? '99+' : notifCount}</span>}
-              </button>
-            </div>
-            <button className="icon-btn" type="button" onClick={() => setFriendsOpen(true)} aria-label="Friends">
-              <IconUsers />
-            </button>
-            <button className="icon-btn" type="button" onClick={() => setGroupOpen(true)} aria-label="New group">
-              <IconPlus />
-            </button>
+            {settingsOpen && (
+              <>
+                <button className="settings-backdrop" type="button" aria-label="Close settings" onClick={() => setSettingsOpen(false)} />
+                <div className="settings-menu" role="menu" aria-label="Settings">
+                  <button
+                    role="menuitem"
+                    type="button"
+                    className="settings-item"
+                    onClick={() => {
+                      setLightMode((v) => !v);
+                      setSettingsOpen(false);
+                    }}
+                  >
+                    {lightMode ? <IconMoon /> : <IconSun />}
+                    <span>{lightMode ? 'Dark mode' : 'Light mode'}</span>
+                  </button>
+                  <button
+                    role="menuitem"
+                    type="button"
+                    className="settings-item"
+                    onClick={() => {
+                      setSettingsOpen(false);
+                      setCustomOpen(true);
+                    }}
+                  >
+                    <IconPalette />
+                    <span>Customize UI</span>
+                  </button>
+                  <button
+                    role="menuitem"
+                    type="button"
+                    className="settings-item"
+                    onClick={() => {
+                      setSettingsOpen(false);
+                      setNotifsOpen(true);
+                      api.notifications().then((r) => setNotifList(r.notifications)).catch(() => {});
+                      api.markNotificationsRead().then(() => setNotifCount(0)).catch(() => {});
+                    }}
+                  >
+                    <IconBell />
+                    <span>Notifications</span>
+                    {notifCount > 0 && <em className="settings-count">{notifCount > 99 ? '99+' : notifCount}</em>}
+                  </button>
+                  <button
+                    role="menuitem"
+                    type="button"
+                    className="settings-item"
+                    onClick={() => {
+                      setSettingsOpen(false);
+                      setFriendsOpen(true);
+                    }}
+                  >
+                    <IconUsers />
+                    <span>Friends</span>
+                  </button>
+                  <button
+                    role="menuitem"
+                    type="button"
+                    className="settings-item"
+                    onClick={() => {
+                      setSettingsOpen(false);
+                      setGroupOpen(true);
+                    }}
+                  >
+                    <IconPlus />
+                    <span>New group</span>
+                  </button>
+                  <button
+                    role="menuitem"
+                    type="button"
+                    className="settings-item"
+                    onClick={() => {
+                      setSettingsOpen(false);
+                      setProfileOpen(true);
+                    }}
+                  >
+                    <IconUser />
+                    <span>Your profile</span>
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </header>
         <div className="search-wrap">
@@ -1702,6 +1775,33 @@ function IconPlus() {
   return (
     <svg {...iconProps()}>
       <path d="M12 5v14M5 12h14" />
+    </svg>
+  );
+}
+function IconSettings() {
+  return (
+    <svg {...iconProps()}>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.2.7.8 1.2 1.5 1.2H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
+    </svg>
+  );
+}
+function IconPalette() {
+  return (
+    <svg {...iconProps()}>
+      <path d="M12 22a10 10 0 1 1 10-10c0 2.2-1.8 3-3 3h-1.5a2.5 2.5 0 0 0 0 5H12z" />
+      <circle cx="7.5" cy="11.5" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="10.5" cy="7.5" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="15.5" cy="7.5" r="1.2" fill="currentColor" stroke="none" />
+      <circle cx="17.5" cy="12" r="1.2" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+function IconUser() {
+  return (
+    <svg {...iconProps()}>
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
     </svg>
   );
 }

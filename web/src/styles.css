@@ -328,11 +328,51 @@ button:focus:not(:focus-visible), input:focus:not(:focus-visible) { outline: non
   overflow: hidden;
 }
 .sidebar-head {
-  display: flex; flex-direction: column; align-items: stretch; gap: 12px;
+  display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 12px;
   padding: 18px 16px 10px; min-height: auto; border-bottom: 0;
 }
 .sidebar-head .brand { margin-right: 0; }
 .sidebar-tools { display: flex; gap: 4px; flex-wrap: wrap; }
+.sidebar-settings { position: relative; flex-shrink: 0; }
+.settings-trigger { position: relative; }
+.settings-backdrop {
+  position: fixed; inset: 0; z-index: calc(var(--z-overlay) - 1);
+  border: 0; background: transparent; cursor: default;
+}
+.settings-menu {
+  position: absolute; top: calc(100% + 8px); right: 0; z-index: var(--z-overlay);
+  width: min(240px, calc(100vw - 32px));
+  padding: 6px;
+  display: grid; gap: 2px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: var(--shadow-lg);
+  animation: sheetIn var(--dur) var(--ease);
+}
+.settings-item {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; min-height: 44px; padding: 0 12px;
+  border: 0; border-radius: 12px;
+  background: transparent; color: var(--text);
+  font-size: 0.92rem; font-weight: 600; text-align: left; cursor: pointer;
+}
+.settings-item svg {
+  width: 18px; height: 18px; flex-shrink: 0;
+  stroke: currentColor; fill: none; stroke-width: 1.75;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.settings-item:hover, .settings-item:focus-visible {
+  background: var(--accent-soft); color: var(--accent); outline: none;
+}
+.settings-count {
+  margin-left: auto;
+  min-width: 22px; height: 22px; padding: 0 6px;
+  border-radius: 999px;
+  background: var(--accent); color: #fff;
+  font-size: 0.7rem; font-style: normal; font-weight: 700;
+  display: inline-grid; place-items: center;
+}
 .search-wrap { padding: 0 16px 12px; position: relative; }
 .search-wrap input {
   border-radius: 16px; background: var(--surface); padding-left: 42px; border: 0;
