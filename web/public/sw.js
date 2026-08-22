@@ -1,4 +1,4 @@
-const CACHE = 'imx-app-v6';
+const CACHE = 'imx-app-v6b';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(['/manifest.webmanifest'])));

@@ -77,10 +77,41 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
             </div>
           </div>
 
-          <a className="auth-get-app" href="/download.html">
-            Download for Android &amp; Windows
-            <span aria-hidden="true">→</span>
-          </a>
+          <div className="auth-installs">
+            <p className="auth-installs-label">Install IMX</p>
+            <div className="auth-install-row">
+              <a
+                className="auth-install android"
+                href="https://imx-cbf0.onbelmo.uk/download/android"
+                download="imx.apk"
+              >
+                <span className="auth-install-icon" aria-hidden="true">
+                  <AndroidIcon />
+                </span>
+                <span className="auth-install-copy">
+                  <strong>Android</strong>
+                  <small>Install APK</small>
+                </span>
+              </a>
+              <a
+                className="auth-install windows"
+                href="https://imx-cbf0.onbelmo.uk/download/windows"
+                download="imx-windows.zip"
+              >
+                <span className="auth-install-icon" aria-hidden="true">
+                  <WindowsIcon />
+                </span>
+                <span className="auth-install-copy">
+                  <strong>Windows</strong>
+                  <small>Install app</small>
+                </span>
+              </a>
+            </div>
+            <a className="auth-get-app" href="https://imx-cbf0.onbelmo.uk/download.html">
+              All downloads
+              <span aria-hidden="true">→</span>
+            </a>
+          </div>
         </aside>
 
         <form className="auth-card" onSubmit={onSubmit}>
@@ -213,6 +244,22 @@ function EyeOffIcon() {
     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
       <path d="M17.94 17.94A10.94 10.94 0 0112 20c-7 0-11-8-11-8a21.8 21.8 0 015.06-6.94M9.9 4.24A10.94 10.94 0 0112 4c7 0 11 8 11 8a21.8 21.8 0 01-2.16 3.19" />
       <path d="M1 1l22 22" />
+    </svg>
+  );
+}
+
+function AndroidIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+      <path d="M17.6 9.48l1.84-3.18a.5.5 0 10-.87-.5l-1.86 3.22A7.93 7.93 0 0012 8c-1.64 0-3.15.5-4.41 1.34L5.73 5.8a.5.5 0 10-.87.5l1.84 3.18A8 8 0 004 16v1.5A1.5 1.5 0 005.5 19h13a1.5 1.5 0 001.5-1.5V16a8 8 0 00-2.4-6.52zM9 15.25a.75.75 0 110-1.5.75.75 0 010 1.5zm6 0a.75.75 0 110-1.5.75.75 0 010 1.5z" />
+    </svg>
+  );
+}
+
+function WindowsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+      <path d="M3 5.5l7.5-1.05V11H3V5.5zm8.5-1.2L21 3v8h-9.5V4.3zM3 13h7.5v6.55L3 18.5V13zm8.5 0H21v8l-9.5-1.35V13z" />
     </svg>
   );
 }

@@ -321,10 +321,39 @@ html:not(.light) .auth-wash {
   0%, 80%, 100% { opacity: 0.35; transform: translateY(0); }
   40% { opacity: 1; transform: translateY(-3px); }
 }
+.auth-installs {
+  margin-top: auto; display: grid; gap: 12px; max-width: 360px;
+  animation: fadeUp 0.75s var(--ease) 0.12s both;
+}
+.auth-installs-label {
+  margin: 0; font-size: 0.72rem; font-weight: 650;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted);
+}
+.auth-install-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.auth-install {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 12px 12px 10px; border-radius: 16px;
+  text-decoration: none; color: var(--text);
+  background: color-mix(in srgb, var(--bg-2) 88%, transparent);
+  border: 1px solid var(--line);
+  transition: transform var(--dur) var(--ease), border-color var(--dur) var(--ease), background var(--dur) var(--ease);
+}
+.auth-install:hover { transform: translateY(-1px); background: var(--bg-2); }
+.auth-install.android:hover { border-color: color-mix(in srgb, #2ea44f 55%, var(--line)); }
+.auth-install.windows:hover { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
+.auth-install-icon {
+  width: 36px; height: 36px; border-radius: 11px; flex-shrink: 0;
+  display: grid; place-items: center; color: #fff;
+}
+.auth-install.android .auth-install-icon { background: #2ea44f; }
+.auth-install.windows .auth-install-icon { background: var(--accent); }
+.auth-install-copy { display: grid; gap: 1px; min-width: 0; }
+.auth-install-copy strong { font-size: 0.9rem; font-weight: 700; letter-spacing: var(--tracking); }
+.auth-install-copy small { color: var(--muted); font-size: 0.75rem; font-weight: 500; }
 .auth-get-app {
-  margin-top: auto; width: fit-content;
+  width: fit-content;
   display: inline-flex; align-items: center; gap: 8px;
-  color: var(--text); font-weight: 650; font-size: 0.95rem;
+  color: var(--text); font-weight: 650; font-size: 0.9rem;
   text-decoration: none; border-bottom: 1px solid transparent;
   transition: color var(--dur) var(--ease), border-color var(--dur) var(--ease);
 }
@@ -1276,6 +1305,7 @@ html, body, .shell, .main, .sidebar, .bubble, .composer, .chat-head {
   .auth-copy { margin-top: 0; }
   .auth-copy h1 { font-size: clamp(3.8rem, 18vw, 6rem); }
   .auth-preview { display: none; }
+  .auth-installs { max-width: none; }
   .auth-card { justify-self: stretch; width: 100%; }
 }
 
