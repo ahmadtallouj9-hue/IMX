@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { api, clearTokens, ensureNativeApiUrl, getAccessToken, setTokens } from './api';
+import { api, ApiError, clearTokens, ensureNativeApiUrl, getAccessToken, setTokens } from './api';
 import { cacheUser, clearCachedUser, isOnline, readCachedUser } from './offline';
 import { connectSocket, disconnectSocket } from './socket';
 import type { PublicUser } from './types';
@@ -35,29 +35,69 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Soft timeout only unlocks the UI — it must not clear a valid session on slow networks.
     const boot = Promise.race([
-      api.me(),
-      new Promise<never>((_, reject) => {
-        window.setTimeout(() => reject(new Error('boot-timeout')), 2000);
+      api.me().then((res) => ({ ok: true as const, res })),
+      new Promise<{ ok: false; reason: 'timeout' }>((resolve) => {
+        window.setTimeout(() => resolve({ ok: false, reason: 'timeout' }), 2500);
       }),
     ]);
 
     boot
-      .then(async (res) => {
+      .then(async (result) => {
         if (cancelled) return;
-        setUser(res.user);
-        await cacheUser(res.user);
-        connectSocket();
+        if (result.ok) {
+          setUser(result.res.user);
+          void cacheUser(result.res.user);
+          connectSocket();
+          return;
+        }
+        // Timed out while "online": keep cached profile and retry me() in background.
+        const cached = await readCachedUser();
+        if (cached) {
+          setUser(cached);
+          connectSocket();
+        }
+        void api
+          .me()
+          .then((res) => {
+            if (cancelled) return;
+            setUser(res.user);
+            void cacheUser(res.user);
+            connectSocket();
+          })
+          .catch(async (err) => {
+            if (cancelled) return;
+            if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+              clearTokens();
+              void clearCachedUser();
+              setUser(null);
+              return;
+            }
+            if (!cached) {
+              const again = await readCachedUser();
+              if (again) setUser(again);
+            }
+          });
       })
-      .catch(async () => {
+      .catch(async (err) => {
         if (cancelled) return;
-        // Stay signed in offline using the last cached profile.
-        if (!isOnline()) {
-          const cached = await readCachedUser();
-          if (cached) {
-            setUser(cached);
-            return;
-          }
+        // Stay signed in offline / on transient failures using the last cached profile.
+        const cached = await readCachedUser();
+        if (cached && !(err instanceof ApiError && (err.status === 401 || err.status === 403))) {
+          setUser(cached);
+          if (isOnline()) connectSocket();
+          return;
+        }
+        if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+          clearTokens();
+          void clearCachedUser();
+          setUser(null);
+          return;
+        }
+        if (!isOnline() && cached) {
+          setUser(cached);
+          return;
         }
         clearTokens();
         void clearCachedUser();

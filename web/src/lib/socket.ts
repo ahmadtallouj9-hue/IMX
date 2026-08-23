@@ -3,6 +3,8 @@ import { getAccessToken, getApiUrl, refreshAccessToken } from './api';
 
 let socket: Socket | null = null;
 let reconnectBound = false;
+let lastRefreshAttempt = 0;
+const REFRESH_COOLDOWN_MS = 15_000;
 
 function bindAuthRefresh(sock: Socket): void {
   if (reconnectBound) return;
@@ -12,6 +14,10 @@ function bindAuthRefresh(sock: Socket): void {
   });
   sock.on('connect_error', () => {
     void (async () => {
+      const now = Date.now();
+      // Avoid a refresh storm when the server is simply down.
+      if (now - lastRefreshAttempt < REFRESH_COOLDOWN_MS) return;
+      lastRefreshAttempt = now;
       const next = await refreshAccessToken();
       if (!next || !socket) return;
       socket.auth = { token: next };
@@ -49,6 +55,7 @@ export function disconnectSocket(): void {
   socket?.disconnect();
   socket = null;
   reconnectBound = false;
+  lastRefreshAttempt = 0;
 }
 
 export function joinConversation(conversationId: string): void {

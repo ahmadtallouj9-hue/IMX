@@ -1,6 +1,6 @@
 import React, { FormEvent, useCallback, useEffect, useMemo, useRef, useState, type SVGProps } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { api, ApiError, getApiUrl, setApiUrl, toUploadPath } from '../lib/api';
+import { api, ApiError, getApiUrl, isRetriableApiError, setApiUrl, toUploadPath } from '../lib/api';
 import { compressImage } from '../lib/compress';
 import { useMediaSrc } from '../lib/media';
 import { canInstall, isNativeApp, isStandalone, promptInstall } from '../lib/install';
@@ -152,41 +152,54 @@ export function Messenger() {
     void outboxCount().then(setQueuedCount).catch(() => setQueuedCount(0));
   }, []);
 
+  const flushingOutbox = useRef(false);
+
   const flushOutbox = useCallback(async () => {
-    if (!isOnline()) return;
-    const pending = await readOutbox();
-    for (const item of pending) {
-      try {
-        const res = await api.sendMessage(
-          item.conversationId,
-          item.body,
-          item.clientMessageId,
-          undefined,
-          item.replyToId ?? null,
-        );
-        await dequeueOutbox(item.id);
-        if (item.conversationId === conversationId) {
-          setMessages((curr) =>
-            curr.map((m) =>
-              m.clientMessageId === item.clientMessageId
-                ? { ...res.message, clientMessageId: item.clientMessageId }
-                : m,
-            ),
+    if (!isOnline() || flushingOutbox.current) return;
+    flushingOutbox.current = true;
+    try {
+      const pending = await readOutbox();
+      for (const item of pending) {
+        try {
+          const res = await api.sendMessage(
+            item.conversationId,
+            item.body,
+            item.clientMessageId,
+            undefined,
+            item.replyToId ?? null,
           );
+          await dequeueOutbox(item.id);
+          if (item.conversationId === conversationId) {
+            setMessages((curr) =>
+              curr.map((m) =>
+                m.clientMessageId === item.clientMessageId
+                  ? { ...res.message, clientMessageId: item.clientMessageId }
+                  : m,
+              ),
+            );
+          }
+        } catch (err) {
+          // Permanent client errors: drop so one bad item cannot jam the queue.
+          if (err instanceof ApiError && err.status >= 400 && err.status < 500 && err.status !== 408 && err.status !== 429) {
+            await dequeueOutbox(item.id);
+            continue;
+          }
+          // Transient / network: stop and retry later
+          break;
         }
-      } catch {
-        // Keep in outbox; retry on next online event
-        break;
       }
+      refreshQueuedCount();
+      if (pending.length) void loadConversations();
+    } finally {
+      flushingOutbox.current = false;
     }
-    refreshQueuedCount();
-    if (pending.length) void loadConversations();
   }, [conversationId, loadConversations, refreshQueuedCount]);
 
   useEffect(() => {
     void loadConversations();
     refreshQueuedCount();
-  }, [loadConversations, refreshQueuedCount]);
+    void flushOutbox();
+  }, [loadConversations, refreshQueuedCount, flushOutbox]);
 
   useEffect(() => {
     const onOnline = () => {
@@ -581,8 +594,8 @@ export function Messenger() {
       setReplyTo(null);
       void loadConversations();
     } catch (err) {
-      const networkFail = !(err instanceof ApiError);
-      if (networkFail) {
+      // request() wraps network failures as ApiError(0/408), so check status — not instanceof.
+      if (isRetriableApiError(err)) {
         setMessages((curr) =>
           curr.map((m) => (m.clientMessageId === clientMessageId ? { ...m, status: 'QUEUED' } : m)),
         );
@@ -600,7 +613,7 @@ export function Messenger() {
       } else {
         setMessages((curr) => curr.filter((m) => m.clientMessageId !== clientMessageId));
         setDraft(body);
-        setChatError(err.message);
+        setChatError(err instanceof Error ? err.message : 'Send failed');
       }
     } finally {
       setSending(false);
@@ -1605,8 +1618,9 @@ export function Messenger() {
                 <input
                   defaultValue={getApiUrl() || window.location.origin}
                   onBlur={(e) => {
-                    const next = e.target.value.trim();
-                    if (next && next !== getApiUrl()) {
+                    const next = e.target.value.trim().replace(/\/$/, '');
+                    const current = (getApiUrl() || window.location.origin).replace(/\/$/, '');
+                    if (next && next !== current) {
                       setApiUrl(next);
                       window.location.reload();
                     }

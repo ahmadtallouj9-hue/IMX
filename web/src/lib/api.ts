@@ -140,10 +140,12 @@ async function refreshAccessToken(): Promise<string | null> {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refreshToken }),
       });
-      if (!res.ok) {
+      // Only wipe the session on a real auth failure — not 429/5xx/network blips.
+      if (res.status === 401 || res.status === 403) {
         clearTokens();
         return null;
       }
+      if (!res.ok) return null;
       const body = await res.json();
       setTokens(body.tokens.accessToken, body.tokens.refreshToken);
       return body.tokens.accessToken as string;
@@ -154,6 +156,12 @@ async function refreshAccessToken(): Promise<string | null> {
     }
   })();
   return refreshInflight;
+}
+
+/** True for transport / server failures that should queue offline instead of discarding. */
+export function isRetriableApiError(err: unknown): boolean {
+  if (!(err instanceof ApiError)) return true;
+  return err.status === 0 || err.status === 408 || err.status === 429 || err.status >= 500;
 }
 
 export { refreshAccessToken };

@@ -2,8 +2,34 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '../database/prisma';
 import { requireAuth } from '../middleware/auth';
 import { badRequest, notFound } from '../utils/errors';
+import { isAdminAccount } from '../utils/admin';
 import { updateProfileSchema } from '../validation';
 import { parseAvatarUrl } from '../utils/upload-security';
+
+function publicMe(user: {
+  id: string;
+  username: string;
+  email: string;
+  displayName: string;
+  bio: string | null;
+  avatarUrl: string | null;
+  isOnline: boolean;
+  lastSeenAt: Date | null;
+  createdAt: Date;
+}) {
+  return {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    displayName: user.displayName,
+    bio: user.bio,
+    avatarUrl: user.avatarUrl,
+    isOnline: user.isOnline,
+    lastSeenAt: user.lastSeenAt?.toISOString() ?? null,
+    createdAt: user.createdAt.toISOString(),
+    isAdmin: isAdminAccount(user),
+  };
+}
 
 export class UsersController {
   static readonly routePrefix = '/users';
@@ -28,7 +54,7 @@ export class UsersController {
       },
     });
     if (!user) throw notFound('User not found');
-    reply.send({ user });
+    reply.send({ user: publicMe(user) });
   }
 
   static async updateMe(req: FastifyRequest, reply: FastifyReply): Promise<void> {
@@ -62,7 +88,7 @@ export class UsersController {
       },
     });
 
-    reply.send({ user });
+    reply.send({ user: publicMe(user) });
   }
 
   static async getById(req: FastifyRequest, reply: FastifyReply): Promise<void> {

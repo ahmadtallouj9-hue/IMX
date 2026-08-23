@@ -6,7 +6,7 @@ import { AuthProvider } from './lib/auth';
 import { isNativeApp, listenForInstall } from './lib/install';
 import './styles.css';
 
-const BUILD_ID = 'ui-v6-login-timeout';
+const BUILD_ID = 'ui-v6-bugfix';
 
 // Always start light so auth/boot never renders as a blank black screen on phones
 // that previously saved dark mode (html:not(.light) uses near-black --bg).

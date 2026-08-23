@@ -37,8 +37,16 @@ export class SearchController {
       return;
     }
 
+    // Never search a conversation the caller is not a member of (IDOR).
+    const scopedConversationId =
+      conversationId && convIds.includes(conversationId) ? conversationId : null;
+    if (conversationId && !scopedConversationId) {
+      reply.status(403).send({ error: { code: 'FORBIDDEN', message: 'Not a member of that conversation' } });
+      return;
+    }
+
     const where: any = {
-      conversationId: conversationId ? conversationId : { in: convIds },
+      conversationId: scopedConversationId ? scopedConversationId : { in: convIds },
       deletedAt: null,
       body: { contains: query },
     };
