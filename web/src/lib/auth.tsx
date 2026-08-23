@@ -23,7 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const boot = Promise.race([
       api.me(),
       new Promise<never>((_, reject) => {
-        window.setTimeout(() => reject(new Error('boot-timeout')), 8000);
+        window.setTimeout(() => reject(new Error('boot-timeout')), 4000);
       }),
     ]);
 

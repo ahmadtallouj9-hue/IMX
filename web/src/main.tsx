@@ -3,10 +3,10 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { App } from './App';
 import { AuthProvider } from './lib/auth';
-import { listenForInstall } from './lib/install';
+import { isNativeApp, listenForInstall } from './lib/install';
 import './styles.css';
 
-const BUILD_ID = 'ui-v6-admin-users-2';
+const BUILD_ID = 'ui-v6-apk-white-fix';
 
 listenForInstall();
 void import('@capacitor/app').then(({ App }) => {
@@ -22,6 +22,22 @@ void import('@capacitor/status-bar').then(({ StatusBar, Style }) => {
 
 async function bootServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
+
+  // Capacitor WebViews + service workers often white-screen. Never register on native.
+  if (isNativeApp()) {
+    try {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map((r) => r.unregister()));
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+    } catch {
+      /* ignore */
+    }
+    return;
+  }
+
   const prev = localStorage.getItem('imx.build');
   if (prev !== BUILD_ID) {
     // Only force one reload per tab session to avoid an infinite Opening IMX loop

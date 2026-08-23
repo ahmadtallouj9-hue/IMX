@@ -25,7 +25,7 @@ export function App() {
         <div className="boot-mark" />
         <p>Opening IMX…</p>
         <button
-          className="btn tertiary"
+          className="btn primary"
           type="button"
           style={{ marginTop: 16 }}
           onClick={() => {
