@@ -49,6 +49,8 @@ export class SearchController {
       conversationId: scopedConversationId ? scopedConversationId : { in: convIds },
       deletedAt: null,
       body: { contains: query },
+      // Ciphertext is not searchable server-side; skip encrypted payloads.
+      NOT: { body: { startsWith: 'imx1.' } },
     };
 
     const messages = await prisma.message.findMany({

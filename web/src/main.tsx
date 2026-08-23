@@ -7,7 +7,7 @@ import { isNativeApp, listenForInstall } from './lib/install';
 import { applySavedCustomProperties } from './lib/customTheme';
 import './styles.css';
 
-const BUILD_ID = 'ui-v7-custom-full';
+const BUILD_ID = 'ui-v8-e2e-crypto';
 
 // Always start light so auth/boot never renders as a blank black screen on phones
 // that previously saved dark mode (html:not(.light) uses near-black --bg).

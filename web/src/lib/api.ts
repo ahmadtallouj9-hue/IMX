@@ -314,6 +314,34 @@ export const api = {
         lastUserAgent?: string | null;
       }>;
     }>('/admin/users'),
+  putCryptoKey: (publicJwk: JsonWebKey) =>
+    request<{ publicJwk: JsonWebKey; updatedAt: string }>('/users/me/crypto-key', {
+      method: 'PUT',
+      body: JSON.stringify({ publicJwk }),
+    }),
+  getMyCryptoKey: () =>
+    request<{ publicJwk: JsonWebKey | null; updatedAt?: string }>('/users/me/crypto-key'),
+  getUserCryptoKey: (userId: string) =>
+    request<{ userId: string; publicJwk: JsonWebKey | null; updatedAt?: string }>(
+      `/users/${userId}/crypto-key`,
+    ),
+  getCryptoKeys: (userIds: string[]) =>
+    request<{ keys: Array<{ userId: string; publicJwk: JsonWebKey | null }> }>('/users/crypto-keys', {
+      method: 'POST',
+      body: JSON.stringify({ userIds }),
+    }),
+  getConversationE2EKey: (conversationId: string) =>
+    request<{ wrappedKey: string | null; hasShares: boolean }>(
+      `/conversations/${conversationId}/e2e-key`,
+    ),
+  putConversationE2EKeys: (
+    conversationId: string,
+    shares: Array<{ userId: string; wrappedKey: string }>,
+  ) =>
+    request<{ success: boolean; count: number }>(`/conversations/${conversationId}/e2e-keys`, {
+      method: 'PUT',
+      body: JSON.stringify({ shares }),
+    }),
 };
 
 const SAFE_UPLOAD = /^\/uploads\/[A-Za-z0-9._-]+$/i;

@@ -26,6 +26,16 @@ import { AdminPanel } from './AdminPanel';
 import { useWebRTC } from '../lib/useWebRTC';
 import { CallOverlay } from '../components/CallOverlay';
 import { CustomizationPanel, applySavedCustomProperties } from '../components/CustomizationPanel';
+import { SecurityPanel } from '../components/SecurityPanel';
+import {
+  decryptMessageBody,
+  decryptMessages,
+  encryptMessageBody,
+  ensureIdentityKeys,
+  isE2EEnabled,
+  isEncryptedPayload,
+  type EncryptContext,
+} from '../lib/e2e';
 
 type PresenceMap = Record<string, { isOnline: boolean; lastSeenAt?: string | null }>;
 
@@ -66,6 +76,7 @@ export function Messenger() {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [groupCallPicker, setGroupCallPicker] = useState<'voice' | 'video' | null>(null);
   const [customOpen, setCustomOpen] = useState(false);
+  const [securityOpen, setSecurityOpen] = useState(false);
   const [fileInput, setFileInput] = useState<'image' | 'video' | 'file' | null>(null);
   const [friendsOpen, setFriendsOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
@@ -131,9 +142,21 @@ export function Messenger() {
   const loadConversations = useCallback(async () => {
     try {
       const res = await api.conversations();
-      setConversations(res.conversations);
+      const decrypted = await Promise.all(
+        res.conversations.map(async (c) => {
+          if (!isEncryptedPayload(c.lastMessage?.body)) return c;
+          const body = await decryptMessageBody(c.lastMessage!.body, {
+            userId: me.id,
+            conversationId: c.id,
+            type: c.type,
+            memberIds: c.members.map((m) => m.id),
+          });
+          return { ...c, lastMessage: { ...c.lastMessage!, body } };
+        }),
+      );
+      setConversations(decrypted);
       setListError(null);
-      void cacheConversations(res.conversations);
+      void cacheConversations(decrypted);
     } catch (err) {
       const cached = await readCachedConversations();
       if (cached?.length) {
@@ -145,7 +168,7 @@ export function Messenger() {
     } finally {
       setListLoading(false);
     }
-  }, []);
+  }, [me.id]);
 
   const refreshQueuedCount = useCallback(() => {
     void outboxCount().then(setQueuedCount).catch(() => setQueuedCount(0));
@@ -160,9 +183,28 @@ export function Messenger() {
       const pending = await readOutbox();
       for (const item of pending) {
         try {
+          let conv = conversations.find((c) => c.id === item.conversationId);
+          if (!conv) {
+            try {
+              const full = await api.getConversation(item.conversationId);
+              const members = (full.conversation.members as Array<PublicUser | { user: PublicUser }>).map(
+                (m) => ('user' in m ? m.user : m),
+              );
+              conv = { ...full.conversation, members } as Conversation;
+            } catch {
+              conv = undefined;
+            }
+          }
+          const ctx: EncryptContext = {
+            userId: me.id,
+            conversationId: item.conversationId,
+            type: conv?.type ?? 'DIRECT',
+            memberIds: conv?.members.map((m) => m.id) ?? [me.id],
+          };
+          const wireBody = await encryptMessageBody(item.body, ctx);
           const res = await api.sendMessage(
             item.conversationId,
-            item.body,
+            wireBody,
             item.clientMessageId,
             undefined,
             item.replyToId ?? null,
@@ -172,7 +214,7 @@ export function Messenger() {
             setMessages((curr) =>
               curr.map((m) =>
                 m.clientMessageId === item.clientMessageId
-                  ? { ...res.message, clientMessageId: item.clientMessageId }
+                  ? { ...res.message, body: item.body, clientMessageId: item.clientMessageId }
                   : m,
               ),
             );
@@ -192,13 +234,14 @@ export function Messenger() {
     } finally {
       flushingOutbox.current = false;
     }
-  }, [conversationId, loadConversations, refreshQueuedCount]);
+  }, [conversationId, conversations, loadConversations, me.id, refreshQueuedCount]);
 
   useEffect(() => {
     void loadConversations();
     refreshQueuedCount();
     void flushOutbox();
-  }, [loadConversations, refreshQueuedCount, flushOutbox]);
+    void ensureIdentityKeys(me.id).catch(() => undefined);
+  }, [loadConversations, refreshQueuedCount, flushOutbox, me.id]);
 
   useEffect(() => {
     const onOnline = () => {
@@ -242,6 +285,7 @@ export function Messenger() {
       if (e.key !== 'Escape') return;
       if (webrtc.callState !== 'idle') return;
       if (customOpen) return;
+      if (securityOpen) { setSecurityOpen(false); return; }
       if (lightboxSrc) { setLightboxSrc(null); setLightboxZoom(1); lightboxPos.current = { x: 0, y: 0 }; return; }
       if (groupCallPicker) { setGroupCallPicker(null); return; }
       if (forwardMsg) { setForwardMsg(null); return; }
@@ -260,7 +304,7 @@ export function Messenger() {
     }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [webrtc.callState, customOpen, lightboxSrc, groupCallPicker, forwardMsg, groupOpen, friendsOpen, adminOpen, detailsOpen, viewedUser, profileOpen, notifsOpen, settingsOpen, emojiOpen, reactMenuId, searchOpen, replyTo, editingId]);
+  }, [webrtc.callState, customOpen, securityOpen, lightboxSrc, groupCallPicker, forwardMsg, groupOpen, friendsOpen, adminOpen, detailsOpen, viewedUser, profileOpen, notifsOpen, settingsOpen, emojiOpen, reactMenuId, searchOpen, replyTo, editingId]);
 
   useEffect(() => {
     const socket = connectSocket();
@@ -270,74 +314,98 @@ export function Messenger() {
     };
     const onDisconnect = () => setConnected(false);
     const onMessage = (payload: ChatMessage) => {
-      setMessages((curr) => {
-        if (!conversationId || payload.conversationId !== conversationId) return curr;
-        if (curr.some((m) => m.id === payload.id || (payload.clientMessageId && m.clientMessageId === payload.clientMessageId))) {
-          return curr.map((m) => (m.clientMessageId && m.clientMessageId === payload.clientMessageId ? payload : m));
-        }
-        return [...curr, payload];
-      });
-      setConversations((curr) => {
-        const preview = {
-          body: payload.body,
-          senderName: payload.sender.displayName,
-          createdAt: payload.createdAt,
+      void (async () => {
+        const existingConv = conversations.find((c) => c.id === payload.conversationId);
+        const ctx: EncryptContext = {
+          userId: me.id,
+          conversationId: payload.conversationId,
+          type: existingConv?.type ?? 'DIRECT',
+          memberIds: existingConv?.members.map((m) => m.id) ?? [me.id, payload.sender.id],
         };
-        const existing = curr.find((c) => c.id === payload.conversationId);
-        if (!existing) {
-          void loadConversations();
-          return curr;
-        }
-        const unread =
-          payload.conversationId === conversationId || payload.sender.id === me.id || existing.muted
-            ? existing.unreadCount
-            : existing.unreadCount + 1;
-        return [
-          { ...existing, lastMessage: preview, lastMessageAt: payload.createdAt, unreadCount: unread },
-          ...curr.filter((c) => c.id !== payload.conversationId),
-        ];
-      });
-      if (payload.conversationId === conversationId && payload.sender.id !== me.id) {
-        socket.emit('message:read', { conversationId, messageId: payload.id });
-      }
-      if (document.visibilityState !== 'visible' && payload.sender.id !== me.id) {
-        try {
-          if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-            const title = payload.sender.displayName;
-            const bodyText = payload.body
-              ?? (payload.type === 'IMAGE' ? '📷 Photo'
-                : payload.type === 'VIDEO' ? '🎬 Video'
-                : payload.type === 'AUDIO' ? '🎤 Voice message'
-                : 'New message');
-            void new Notification(title, {
-              body: bodyText,
-              tag: `imx-${payload.conversationId}`,
-              icon: '/icon-192.png',
-            });
+        const plainBody = await decryptMessageBody(payload.body, ctx);
+        const next = { ...payload, body: plainBody };
+
+        setMessages((curr) => {
+          if (!conversationId || next.conversationId !== conversationId) return curr;
+          if (curr.some((m) => m.id === next.id || (next.clientMessageId && m.clientMessageId === next.clientMessageId))) {
+            return curr.map((m) =>
+              m.clientMessageId && m.clientMessageId === next.clientMessageId
+                ? { ...next, body: m.body && !isEncryptedPayload(m.body) ? m.body : next.body }
+                : m.id === next.id
+                  ? next
+                  : m,
+            );
           }
-        } catch {
-          /* notifications unsupported */
+          return [...curr, next];
+        });
+        setConversations((curr) => {
+          const preview = {
+            body: next.body,
+            senderName: next.sender.displayName,
+            createdAt: next.createdAt,
+          };
+          const existing = curr.find((c) => c.id === next.conversationId);
+          if (!existing) {
+            void loadConversations();
+            return curr;
+          }
+          const unread =
+            next.conversationId === conversationId || next.sender.id === me.id || existing.muted
+              ? existing.unreadCount
+              : existing.unreadCount + 1;
+          return [
+            { ...existing, lastMessage: preview, lastMessageAt: next.createdAt, unreadCount: unread },
+            ...curr.filter((c) => c.id !== next.conversationId),
+          ];
+        });
+        if (next.conversationId === conversationId && next.sender.id !== me.id) {
+          socket.emit('message:read', { conversationId, messageId: next.id });
         }
-        try {
-          if (navigator.userAgent.includes('Android') && (window as any).Capacitor) {
-            const bodyText = payload.body
-              ?? (payload.type === 'IMAGE' ? '📷 Photo'
-                : payload.type === 'VIDEO' ? '🎬 Video'
-                : payload.type === 'AUDIO' ? '🎤 Voice message'
-                : 'New message');
-            import('@capacitor/local-notifications').then(({ LocalNotifications }) => {
-              LocalNotifications.requestPermissions();
-              LocalNotifications.schedule({
-                notifications: [{
-                  title: payload.sender.displayName,
-                  body: bodyText,
-                  id: Math.floor(Math.random() * 100000),
-                }],
+        if (document.visibilityState !== 'visible' && next.sender.id !== me.id) {
+          try {
+            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+              const title = next.sender.displayName;
+              const bodyText =
+                isEncryptedPayload(payload.body) || plainBody?.startsWith('🔒')
+                  ? '🔒 Encrypted message'
+                  : plainBody
+                    ?? (next.type === 'IMAGE' ? '📷 Photo'
+                      : next.type === 'VIDEO' ? '🎬 Video'
+                      : next.type === 'AUDIO' ? '🎤 Voice message'
+                      : 'New message');
+              void new Notification(title, {
+                body: bodyText,
+                tag: `imx-${next.conversationId}`,
+                icon: '/icon-192.png',
               });
-            });
+            }
+          } catch {
+            /* notifications unsupported */
           }
-        } catch { /* unsupported */ }
-      }
+          try {
+            if (navigator.userAgent.includes('Android') && (window as any).Capacitor) {
+              const bodyText =
+                isEncryptedPayload(payload.body) || plainBody?.startsWith('🔒')
+                  ? '🔒 Encrypted message'
+                  : plainBody
+                    ?? (next.type === 'IMAGE' ? '📷 Photo'
+                      : next.type === 'VIDEO' ? '🎬 Video'
+                      : next.type === 'AUDIO' ? '🎤 Voice message'
+                      : 'New message');
+              import('@capacitor/local-notifications').then(({ LocalNotifications }) => {
+                LocalNotifications.requestPermissions();
+                LocalNotifications.schedule({
+                  notifications: [{
+                    title: next.sender.displayName,
+                    body: bodyText,
+                    id: Math.floor(Math.random() * 100000),
+                  }],
+                });
+              });
+            }
+          } catch { /* unsupported */ }
+        }
+      })();
     };
     const onTypingStart = (p: { userId: string; displayName?: string; conversationId: string }) => {
       if (p.conversationId !== conversationId || p.userId === me.id) return;
@@ -363,9 +431,18 @@ export function Messenger() {
     };
     const onEdited = (p: { id: string; body: string; conversationId: string; editedAt: string }) => {
       if (p.conversationId !== conversationId) return;
-      setMessages((curr) =>
-        curr.map((m) => (m.id === p.id ? { ...m, body: p.body, updatedAt: p.editedAt, edited: true } : m)),
-      );
+      void (async () => {
+        const activeConv = conversations.find((c) => c.id === p.conversationId);
+        const body = await decryptMessageBody(p.body, {
+          userId: me.id,
+          conversationId: p.conversationId,
+          type: activeConv?.type ?? 'DIRECT',
+          memberIds: activeConv?.members.map((m) => m.id) ?? [me.id],
+        });
+        setMessages((curr) =>
+          curr.map((m) => (m.id === p.id ? { ...m, body, updatedAt: p.editedAt, edited: true } : m)),
+        );
+      })();
     };
     const onDeleted = (p: { id: string; conversationId: string }) => {
       if (p.conversationId !== conversationId) return;
@@ -431,7 +508,7 @@ export function Messenger() {
       socket.off('presence:update', onPresence);
       socket.off('presence:snapshot', onSnapshot);
     };
-  }, [conversationId, loadConversations, me.id]);
+  }, [conversationId, conversations, loadConversations, me.id, flushOutbox]);
 
   useEffect(() => {
     if (!conversationId) {
@@ -445,14 +522,22 @@ export function Messenger() {
     setChatLoading(true);
     setChatError(null);
     stickToBottom.current = true;
+    const activeConv = conversations.find((c) => c.id === conversationId);
     api
       .messages(conversationId)
-      .then((res) => {
+      .then(async (res) => {
         const chronological = res.messages.slice().reverse();
-        setMessages(chronological);
+        const ctx: EncryptContext = {
+          userId: me.id,
+          conversationId,
+          type: activeConv?.type ?? 'DIRECT',
+          memberIds: activeConv?.members.map((m) => m.id) ?? [me.id],
+        };
+        const plain = await decryptMessages(chronological, ctx);
+        setMessages(plain);
         setNextCursor(res.nextCursor);
         setHasMore(res.hasMore);
-        void cacheMessages(conversationId, chronological);
+        void cacheMessages(conversationId, plain);
         return api.markRead(conversationId);
       })
       .then(() => {
@@ -468,7 +553,7 @@ export function Messenger() {
         }
       })
       .finally(() => setChatLoading(false));
-  }, [conversationId]);
+  }, [conversationId, me.id]);
 
   useEffect(() => {
     if (!stickToBottom.current || !scroller.current) return;
@@ -536,8 +621,17 @@ export function Messenger() {
 
     if (editingId) {
       try {
-        const res = await api.editMessage(conversationId, editingId, body);
-        setMessages((curr) => curr.map((m) => (m.id === editingId ? { ...m, ...res.message, edited: true } : m)));
+        const activeConv = conversations.find((c) => c.id === conversationId);
+        const wireBody = await encryptMessageBody(body, {
+          userId: me.id,
+          conversationId,
+          type: activeConv?.type ?? 'DIRECT',
+          memberIds: activeConv?.members.map((m) => m.id) ?? [me.id],
+        });
+        const res = await api.editMessage(conversationId, editingId, wireBody);
+        setMessages((curr) =>
+          curr.map((m) => (m.id === editingId ? { ...m, ...res.message, body, edited: true } : m)),
+        );
         setEditingId(null);
         setDraft('');
       } catch (err) {
@@ -586,9 +680,18 @@ export function Messenger() {
     }
 
     try {
-      const res = await api.sendMessage(conversationId, body, clientMessageId, undefined, replyTo?.id ?? null);
+      const activeConv = conversations.find((c) => c.id === conversationId);
+      const wireBody = await encryptMessageBody(body, {
+        userId: me.id,
+        conversationId,
+        type: activeConv?.type ?? 'DIRECT',
+        memberIds: activeConv?.members.map((m) => m.id) ?? [me.id],
+      });
+      const res = await api.sendMessage(conversationId, wireBody, clientMessageId, undefined, replyTo?.id ?? null);
       setMessages((curr) =>
-        curr.map((m) => (m.clientMessageId === clientMessageId ? { ...res.message, clientMessageId } : m)),
+        curr.map((m) =>
+          m.clientMessageId === clientMessageId ? { ...res.message, body, clientMessageId } : m,
+        ),
       );
       setReplyTo(null);
       void loadConversations();
@@ -849,10 +952,27 @@ export function Messenger() {
     }
     setSearching(true);
     try {
+      const needle = q.trim().toLowerCase();
+      const localHits = messages.filter(
+        (m) => m.body && !isEncryptedPayload(m.body) && m.body.toLowerCase().includes(needle),
+      );
       const res = await api.searchMessages(conversationId, q.trim());
-      setSearchResults(res.messages);
+      const activeConv = conversations.find((c) => c.id === conversationId);
+      const remote = await decryptMessages(res.messages, {
+        userId: me.id,
+        conversationId,
+        type: activeConv?.type ?? 'DIRECT',
+        memberIds: activeConv?.members.map((m) => m.id) ?? [me.id],
+      });
+      const byId = new Map<string, ChatMessage>();
+      for (const m of [...remote, ...localHits]) byId.set(m.id, m);
+      setSearchResults([...byId.values()]);
     } catch {
-      setSearchResults([]);
+      setSearchResults(
+        messages.filter(
+          (m) => m.body && !isEncryptedPayload(m.body) && m.body.toLowerCase().includes(q.trim().toLowerCase()),
+        ),
+      );
     } finally {
       setSearching(false);
     }
@@ -865,7 +985,14 @@ export function Messenger() {
     setLoadingOlder(true);
     try {
       const res = await api.messages(conversationId, nextCursor);
-      setMessages((curr) => [...res.messages.slice().reverse(), ...curr]);
+      const activeConv = conversations.find((c) => c.id === conversationId);
+      const plain = await decryptMessages(res.messages.slice().reverse(), {
+        userId: me.id,
+        conversationId,
+        type: activeConv?.type ?? 'DIRECT',
+        memberIds: activeConv?.members.map((m) => m.id) ?? [me.id],
+      });
+      setMessages((curr) => [...plain, ...curr]);
       setNextCursor(res.nextCursor);
       setHasMore(res.hasMore);
       requestAnimationFrame(() => {
@@ -1009,6 +1136,18 @@ export function Messenger() {
                   >
                     <IconPalette />
                     <span>Customize UI</span>
+                  </button>
+                  <button
+                    role="menuitem"
+                    type="button"
+                    className="settings-item"
+                    onClick={() => {
+                      setSettingsOpen(false);
+                      setSecurityOpen(true);
+                    }}
+                  >
+                    <IconLock />
+                    <span>Security</span>
                   </button>
                   <button
                     role="menuitem"
@@ -1181,7 +1320,15 @@ export function Messenger() {
               <button className="row plain" type="button" onClick={() => (peer ? setViewedUser(peer) : setDetailsOpen(true))}>
                 <Avatar user={peer ?? { id: conversationId, username: title, displayName: title, avatarUrl: active?.imageUrl }} online={peerOnline} />
                 <span>
-                  <strong>{title}</strong>
+                  <strong>
+                    {title}
+                    {isE2EEnabled() && (
+                      <span className="e2e-badge" title="End-to-end encrypted">
+                        {' '}
+                        <IconLock />
+                      </span>
+                    )}
+                  </strong>
                   <small>
                     {peer
                       ? peerOnline
@@ -1970,6 +2117,7 @@ export function Messenger() {
         canScreenShare={webrtc.canScreenShare}
       />
       <CustomizationPanel isOpen={customOpen} onClose={() => setCustomOpen(false)} me={me} />
+      <SecurityPanel open={securityOpen} onClose={() => setSecurityOpen(false)} userId={me.id} />
     </div>
   );
 }
@@ -2145,6 +2293,14 @@ function IconShield() {
     <svg {...iconProps()}>
       <path d="M12 3l8 4v5c0 5-3.4 8.4-8 9-4.6-.6-8-4-8-9V7l8-4z" />
       <path d="M9.5 12.5l1.8 1.8 3.7-3.8" />
+    </svg>
+  );
+}
+function IconLock() {
+  return (
+    <svg {...iconProps({ width: 14, height: 14 })}>
+      <rect x="3" y="11" width="18" height="11" rx="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
     </svg>
   );
 }

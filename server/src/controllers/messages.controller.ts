@@ -3,6 +3,7 @@ import { prisma } from '../database/prisma';
 import { requireAuth } from '../middleware/auth';
 import { badRequest, forbidden, notFound } from '../utils/errors';
 import { sendMessageSchema } from '../validation';
+import { messagePreview } from '../utils/message-preview';
 
 export class MessagesController {
   static readonly routePrefix = '/conversations/:conversationId/messages';
@@ -199,10 +200,7 @@ export class MessagesController {
         select: { userId: true },
       });
       const senderName = message.sender.displayName;
-      const preview = message.type === 'AUDIO' ? '🎤 Voice message'
-        : message.type === 'IMAGE' ? '📷 Photo'
-        : message.type === 'VIDEO' ? '🎬 Video'
-        : (message.body?.slice(0, 100) ?? 'Sent an attachment');
+      const preview = messagePreview(message.type, message.body);
       const io = getIO();
       for (const m of members) {
         const notif = await prisma.notification.create({
@@ -237,6 +235,9 @@ export class MessagesController {
 
     if (!body || body.trim().length === 0) {
       throw badRequest('Message body is required');
+    }
+    if (body.trim().length > 16000) {
+      throw badRequest('Message body is too long');
     }
 
     const membership = await prisma.conversationMember.findUnique({

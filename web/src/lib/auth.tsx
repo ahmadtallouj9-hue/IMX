@@ -123,6 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(res.user);
         void cacheUser(res.user);
         connectSocket();
+        void import('./e2e').then(({ ensureIdentityKeys }) => ensureIdentityKeys(res.user.id)).catch(() => undefined);
       },
       async register(payload) {
         ensureNativeApiUrl();
@@ -131,6 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(res.user);
         void cacheUser(res.user);
         connectSocket();
+        void import('./e2e').then(({ ensureIdentityKeys }) => ensureIdentityKeys(res.user.id)).catch(() => undefined);
       },
       async logout() {
         try {

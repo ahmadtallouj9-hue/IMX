@@ -23,7 +23,8 @@ export const createConversationSchema = z.object({
 });
 
 export const sendMessageSchema = z.object({
-  body: z.string().max(4000).optional(),
+  // Ciphertext is larger than plaintext (base64 + IV); allow room for encrypted bodies.
+  body: z.string().max(16000).optional(),
   clientMessageId: z.string().min(1).max(80).optional(),
   replyToId: z.string().min(1).max(64).nullable().optional(),
   attachments: z.array(z.object({

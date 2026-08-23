@@ -10,11 +10,13 @@ import { GroupsController } from '../controllers/groups.controller';
 import { SearchController } from '../controllers/search.controller';
 import { UploadsController } from '../controllers/uploads.controller';
 import { AdminController } from '../controllers/admin.controller';
+import { KeysController } from '../controllers/keys.controller';
 
 export async function registerRoutes(app: FastifyInstance): Promise<void> {
   app.register(healthRoutes);
   AuthController.registerRoutes(app);
   UsersController.registerRoutes(app);
+  KeysController.registerRoutes(app);
   FriendsController.registerRoutes(app);
   ConversationsController.registerRoutes(app);
   MessagesController.registerRoutes(app);

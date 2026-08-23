@@ -40,9 +40,37 @@ model User {
   messageReads     MessageRead[]
   notifications    Notification[]
   reactions        MessageReaction[]
+  cryptoKey        UserCryptoKey?
+  keyShares        ConversationKeyShare[]
 
   @@index([username])
   @@index([email])
+}
+
+// Public ECDH P-256 key for E2E message encryption (private key never leaves the device).
+model UserCryptoKey {
+  userId    String   @id
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  publicJwk String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Per-member wrapped AES conversation key (groups). Direct chats derive keys via ECDH.
+model ConversationKeyShare {
+  id             String   @id @default(uuid())
+  conversationId String
+  userId         String
+  wrappedKey     String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+  @@index([conversationId])
 }
 
 model Profile {
@@ -137,6 +165,7 @@ model Conversation {
 
   members   ConversationMember[]
   messages  Message[]
+  keyShares ConversationKeyShare[]
 
   @@index([type])
   @@index([updatedAt])

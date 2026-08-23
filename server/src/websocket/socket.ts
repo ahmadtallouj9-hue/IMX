@@ -115,7 +115,7 @@ export function setupSocketIO(app: FastifyInstance): void {
           .filter((a): a is NonNullable<typeof a> => a != null);
 
         const trimmed = body?.trim() ?? '';
-        if ((!trimmed && attachments.length === 0) || trimmed.length > 4000) return;
+        if ((!trimmed && attachments.length === 0) || trimmed.length > 16000) return;
 
         const membership = await prisma.conversationMember.findUnique({
           where: { conversationId_userId: { conversationId, userId } },
