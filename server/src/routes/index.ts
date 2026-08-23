@@ -9,6 +9,7 @@ import { NotificationsController } from '../controllers/notifications.controller
 import { GroupsController } from '../controllers/groups.controller';
 import { SearchController } from '../controllers/search.controller';
 import { UploadsController } from '../controllers/uploads.controller';
+import { AdminController } from '../controllers/admin.controller';
 
 export async function registerRoutes(app: FastifyInstance): Promise<void> {
   app.register(healthRoutes);
@@ -21,4 +22,5 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
   GroupsController.registerRoutes(app);
   SearchController.registerRoutes(app);
   UploadsController.registerRoutes(app);
+  AdminController.registerRoutes(app);
 }

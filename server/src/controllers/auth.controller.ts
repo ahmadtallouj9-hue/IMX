@@ -7,6 +7,7 @@ import { requireAuth } from '../middleware/auth';
 import { randomBytes } from 'crypto';
 import { registerSchema, loginSchema } from '../validation';
 import { env } from '../config';
+import { isAdminAccount } from '../utils/admin';
 
 const DUMMY_PASSWORD_HASH = '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy';
 const authLimit = { config: { rateLimit: { max: env.AUTH_RATE_LIMIT_MAX, timeWindow: env.RATE_LIMIT_WINDOW_MS } } };
@@ -83,7 +84,7 @@ export class AuthController {
       where: { id: userId },
       select: {
         id: true, username: true, email: true, displayName: true,
-        bio: true, avatarUrl: true, isOnline: true, createdAt: true,
+        bio: true, avatarUrl: true, isOnline: true, lastSeenAt: true, createdAt: true,
       },
     });
 
@@ -91,7 +92,7 @@ export class AuthController {
       reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'User not found' } });
       return;
     }
-    reply.send({ user });
+    reply.send({ user: AuthController.publicUser(user) });
   }
 
     /** POST /auth/refresh — rotate refresh tokens and issue a new access token. */
@@ -156,7 +157,17 @@ export class AuthController {
   }
 
   private static publicUser(
-    user: { id: string; username: string | null; email: string; displayName: string | null; bio?: string | null; avatarUrl?: string | null; isOnline?: boolean; createdAt?: Date },
+    user: {
+      id: string;
+      username: string | null;
+      email: string;
+      displayName: string | null;
+      bio?: string | null;
+      avatarUrl?: string | null;
+      isOnline?: boolean;
+      lastSeenAt?: Date | null;
+      createdAt?: Date;
+    },
   ) {
     return {
       id: user.id,
@@ -166,7 +177,9 @@ export class AuthController {
       bio: user.bio ?? null,
       avatarUrl: user.avatarUrl ?? null,
       isOnline: user.isOnline ?? false,
+      lastSeenAt: user.lastSeenAt?.toISOString() ?? null,
       createdAt: user.createdAt?.toISOString(),
+      isAdmin: isAdminAccount(user),
     };
   }
 }

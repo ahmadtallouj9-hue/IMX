@@ -251,6 +251,25 @@ export const api = {
   notifications: () => request<{ notifications: Array<{ id: string; type: string; title: string; body?: string; read: boolean; createdAt: string }> }>('/notifications'),
   unreadNotificationCount: () => request<{ count: number }>('/notifications/unread-count'),
   markNotificationsRead: () => request<{ success: boolean }>('/notifications/read-all', { method: 'POST' }),
+  adminUsers: () =>
+    request<{
+      total: number;
+      online: number;
+      users: Array<{
+        id: string;
+        username: string;
+        email: string;
+        displayName: string;
+        avatarUrl?: string | null;
+        isOnline: boolean;
+        lastSeenAt?: string | null;
+        createdAt: string;
+        activeSessions: number;
+        lastSignInAt?: string | null;
+        lastSignInIp?: string | null;
+        lastUserAgent?: string | null;
+      }>;
+    }>('/admin/users'),
 };
 
 const SAFE_UPLOAD = /^\/uploads\/[A-Za-z0-9._-]+$/i;

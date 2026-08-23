@@ -1213,6 +1213,36 @@ html.light .profile-hero {
   margin: 0; padding: 18px 14px; text-align: center;
   color: var(--muted); font-size: 0.85rem;
 }
+
+/* Admin users panel */
+.admin-sheet { width: min(560px, 100%); max-height: min(88vh, 760px); }
+.admin-head-actions { display: flex; align-items: center; gap: 8px; }
+.admin-stats {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  padding: 14px 20px 0;
+}
+.admin-stats > div {
+  border: 1px solid var(--line); border-radius: 14px;
+  background: var(--surface); padding: 12px 14px;
+  display: grid; gap: 2px;
+}
+.admin-stats strong { font-size: 1.25rem; letter-spacing: -0.03em; }
+.admin-stats span { color: var(--muted); font-size: 0.78rem; font-weight: 650; }
+.admin-filters { display: flex; gap: 8px; flex-wrap: wrap; }
+.admin-card { max-height: none; }
+.admin-row { align-items: flex-start; }
+.admin-row .avatar { width: 40px; height: 40px; flex-shrink: 0; font-size: 0.78rem; }
+.admin-row-meta {
+  display: grid; gap: 2px; min-width: 0; flex: 1;
+}
+.admin-row-meta strong { font-size: 0.92rem; }
+.admin-row-meta > span {
+  color: var(--muted); font-size: 0.78rem;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.admin-row-detail { white-space: normal !important; line-height: 1.35; }
+.friends-status.on { color: var(--accent); }
+
 .visually-hidden {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;

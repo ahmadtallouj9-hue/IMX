@@ -91,7 +91,8 @@ export function buildApp(): FastifyInstance {
   const spaReady = existsSync(spaIndex);
   const apiPrefixes = [
     '/auth', '/users', '/conversations', '/groups', '/uploads',
-    '/health', '/search', '/notifications', '/friends', '/download', '/get', '/apps', '/socket.io',
+    '/health', '/search', '/notifications', '/friends', '/admin',
+    '/download', '/get', '/apps', '/socket.io',
   ];
 
   if (spaReady) {

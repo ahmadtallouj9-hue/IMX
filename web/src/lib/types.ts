@@ -8,6 +8,7 @@ export type PublicUser = {
   lastSeenAt?: string | null;
   email?: string;
   createdAt?: string;
+  isAdmin?: boolean;
 };
 
 export type ChatTheme = 'chatter' | 'cove' | 'dusk' | 'ember' | 'moss' | 'midnight';

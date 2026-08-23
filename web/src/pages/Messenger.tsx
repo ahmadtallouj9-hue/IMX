@@ -11,6 +11,7 @@ import { EMOJIS } from '../lib/emojis';
 import type { ChatMessage, Conversation, PublicUser } from '../lib/types';
 import { ChatDetails } from './ChatDetails';
 import { FriendsPanel } from './FriendsPanel';
+import { AdminPanel } from './AdminPanel';
 import { useWebRTC } from '../lib/useWebRTC';
 import { CallOverlay } from '../components/CallOverlay';
 import { CustomizationPanel, applySavedCustomProperties, clearCustomProperties } from '../components/CustomizationPanel';
@@ -54,6 +55,7 @@ export function Messenger() {
   const [customOpen, setCustomOpen] = useState(false);
   const [fileInput, setFileInput] = useState<'image' | 'video' | 'file' | null>(null);
   const [friendsOpen, setFriendsOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [imageBusy, setImageBusy] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -158,6 +160,7 @@ export function Messenger() {
       if (forwardMsg) { setForwardMsg(null); return; }
       if (groupOpen) { setGroupOpen(false); return; }
       if (friendsOpen) { setFriendsOpen(false); return; }
+      if (adminOpen) { setAdminOpen(false); return; }
       if (detailsOpen) { setDetailsOpen(false); return; }
       if (viewedUser) { setViewedUser(null); return; }
       if (profileOpen) { setProfileOpen(false); return; }
@@ -170,7 +173,7 @@ export function Messenger() {
     }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [webrtc.callState, customOpen, lightboxSrc, groupCallPicker, forwardMsg, groupOpen, friendsOpen, detailsOpen, viewedUser, profileOpen, notifsOpen, settingsOpen, emojiOpen, reactMenuId, searchOpen, replyTo, editingId]);
+  }, [webrtc.callState, customOpen, lightboxSrc, groupCallPicker, forwardMsg, groupOpen, friendsOpen, adminOpen, detailsOpen, viewedUser, profileOpen, notifsOpen, settingsOpen, emojiOpen, reactMenuId, searchOpen, replyTo, editingId]);
 
   useEffect(() => {
     const socket = connectSocket();
@@ -897,6 +900,20 @@ export function Messenger() {
                     <IconUsers />
                     <span>Friends</span>
                   </button>
+                  {me.isAdmin && (
+                    <button
+                      role="menuitem"
+                      type="button"
+                      className="settings-item"
+                      onClick={() => {
+                        setSettingsOpen(false);
+                        setAdminOpen(true);
+                      }}
+                    >
+                      <IconShield />
+                      <span>Admin</span>
+                    </button>
+                  )}
                   <button
                     role="menuitem"
                     type="button"
@@ -1527,6 +1544,10 @@ export function Messenger() {
         />
       )}
 
+      {adminOpen && me.isAdmin && (
+        <AdminPanel onClose={() => setAdminOpen(false)} />
+      )}
+
       {groupOpen && (
         <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="new-group-title" onClick={() => setGroupOpen(false)}>
           <form className="sheet group-sheet" onClick={(e) => e.stopPropagation()} onSubmit={(e) => void createGroup(e)}>
@@ -1970,6 +1991,14 @@ function IconUsers() {
       <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
       <circle cx="9" cy="7" r="4" />
       <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+function IconShield() {
+  return (
+    <svg {...iconProps()}>
+      <path d="M12 3l8 4v5c0 5-3.4 8.4-8 9-4.6-.6-8-4-8-9V7l8-4z" />
+      <path d="M9.5 12.5l1.8 1.8 3.7-3.8" />
     </svg>
   );
 }
