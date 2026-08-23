@@ -257,6 +257,16 @@ export function ChatDetails({ conversation, meId, people, query, onQuery, onClos
               style={backgroundPreview ? { backgroundImage: `url(${backgroundPreview})` } : undefined}
             >
               {!backgroundPreview && <span>No wallpaper</span>}
+              {conversation.backgroundUrl && (
+                <button
+                  className="btn cd-wall-remove"
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void savePrefs({ backgroundUrl: null })}
+                >
+                  Remove
+                </button>
+              )}
             </div>
             <div className="cd-wall-actions">
               <label className="btn primary file-btn">
@@ -272,11 +282,6 @@ export function ChatDetails({ conversation, meId, people, query, onQuery, onClos
                   }}
                 />
               </label>
-              {conversation.backgroundUrl && (
-                <button className="btn" type="button" disabled={busy} onClick={() => void savePrefs({ backgroundUrl: null })}>
-                  Remove
-                </button>
-              )}
             </div>
           </div>
         </section>

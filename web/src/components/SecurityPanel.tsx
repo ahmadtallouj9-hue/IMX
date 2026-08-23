@@ -126,19 +126,18 @@ export function SecurityPanel({ open, onClose, userId }: Props) {
             <div className="toggle-row">
               <div>
                 <strong>End-to-end encryption</strong>
-                <span className="hint">Server stores ciphertext only — never your private key.</span>
+                <span className="hint">Always on — text and media are sealed on your device before upload.</span>
               </div>
-              <input
-                type="checkbox"
-                checked={enabled}
-                onChange={(e) => void toggle(e.target.checked)}
-                aria-label="Toggle end-to-end encryption"
-              />
+              <span className="security-pill ok" aria-label="Encryption always enabled">
+                Locked on
+              </span>
             </div>
             <ul className="security-list">
               <li>Direct chats: ECDH P-256 + AES-256-GCM</li>
               <li>Groups: shared AES key, wrapped per member</li>
-              <li>Push/notification previews stay locked</li>
+              <li>Photos, videos, and files are encrypted before upload</li>
+              <li>Notifications never show message text</li>
+              <li>Your private key never leaves this device</li>
             </ul>
             <p className={`security-pill ${hasKey ? 'ok' : 'warn'}`}>
               {hasKey ? 'Keys ready on this device' : 'Setting up keys…'}

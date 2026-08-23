@@ -32,7 +32,19 @@ function canScreenShare(): boolean {
   return typeof navigator !== 'undefined' && Boolean(navigator.mediaDevices?.getDisplayMedia);
 }
 
-export function useWebRTC(me: { id: string; displayName: string; avatarUrl?: string | null }) {
+export function useWebRTC(
+  me: { id: string; displayName: string; avatarUrl?: string | null },
+  options?: { onCallEvent?: (event: { conversationId: string; text: string }) => void },
+) {
+  const onCallEventRef = useRef(options?.onCallEvent);
+  useEffect(() => {
+    onCallEventRef.current = options?.onCallEvent;
+  }, [options?.onCallEvent]);
+
+  const reportCallEvent = useCallback((conversationId: string | undefined, text: string) => {
+    if (!conversationId) return;
+    onCallEventRef.current?.({ conversationId, text });
+  }, []);
   const [callState, setCallState] = useState<CallState>('idle');
   const [callInfo, setCallInfo] = useState<CallInfo | null>(null);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -189,6 +201,7 @@ export function useWebRTC(me: { id: string; displayName: string; avatarUrl?: str
       const state = pc.connectionState;
       if (state === 'failed') {
         setCallError('Connection failed — no route to peer');
+        reportCallEvent(conversationId, '📞 Call · Connection failed');
         setTimeout(() => endCallAndCleanup(), 2500);
       } else if (state === 'disconnected') {
         setCallError('Connection unstable…');
@@ -204,12 +217,13 @@ export function useWebRTC(me: { id: string; displayName: string; avatarUrl?: str
     pc.oniceconnectionstatechange = () => {
       if (pc.iceConnectionState === 'failed') {
         setCallError('Could not establish connection — try again');
+        reportCallEvent(conversationId, '📞 Call · Connection failed');
         setTimeout(() => endCallAndCleanup(), 2500);
       }
     };
 
     return pc;
-  }, [endCallAndCleanup, fullCleanup]);
+  }, [endCallAndCleanup, fullCleanup, reportCallEvent]);
 
   const getMedia = useCallback(async (mode: CallMode) => {
     if (!navigator.mediaDevices?.getUserMedia) {
@@ -270,6 +284,7 @@ export function useWebRTC(me: { id: string; displayName: string; avatarUrl?: str
       outgoingTimerRef.current = setTimeout(() => {
         if (callStateRef.current === 'outgoing') {
           setCallError('No answer — call ended');
+          reportCallEvent(conversationId, '📞 Call · No answer');
           endCallAndCleanup(conversationId);
         }
       }, 45000);
@@ -278,7 +293,7 @@ export function useWebRTC(me: { id: string; displayName: string; avatarUrl?: str
       setCallError(err instanceof Error ? err.message : 'Failed to start call');
       endCallAndCleanup(conversationId);
     }
-  }, [getMedia, createPeer, clearOutgoingTimer, endCallAndCleanup]);
+  }, [getMedia, createPeer, clearOutgoingTimer, endCallAndCleanup, reportCallEvent]);
 
   const acceptCall = useCallback(async (
     conversationId: string,
@@ -510,6 +525,7 @@ export function useWebRTC(me: { id: string; displayName: string; avatarUrl?: str
     const onRejected = () => {
       clearOutgoingTimer();
       setCallError('Call rejected');
+      reportCallEvent(callInfoRef.current?.conversationId, '📞 Call · Declined');
       setTimeout(() => fullCleanup(), 1500);
     };
     const onEnded = () => {
@@ -519,11 +535,13 @@ export function useWebRTC(me: { id: string; displayName: string; avatarUrl?: str
     const onBusy = () => {
       clearOutgoingTimer();
       setCallError('User is in another call');
+      reportCallEvent(callInfoRef.current?.conversationId, '📞 Call · User busy');
       setTimeout(() => fullCleanup(), 2000);
     };
     const onOffline = () => {
       clearOutgoingTimer();
       setCallError('User is offline');
+      reportCallEvent(callInfoRef.current?.conversationId, '📞 Call · User offline');
       setTimeout(() => fullCleanup(), 2000);
     };
 
@@ -559,7 +577,7 @@ export function useWebRTC(me: { id: string; displayName: string; avatarUrl?: str
       socket.off('call:renegotiate', onRenegotiate);
       socket.off('call:media-state', onMediaState);
     };
-  }, [flushIce, fullCleanup, clearOutgoingTimer]);
+  }, [flushIce, fullCleanup, clearOutgoingTimer, reportCallEvent]);
 
   return {
     callState,

@@ -2,7 +2,7 @@ import React, { FormEvent, useCallback, useEffect, useMemo, useRef, useState, ty
 import { useNavigate, useParams } from 'react-router-dom';
 import { api, ApiError, getApiUrl, isRetriableApiError, setApiUrl, toUploadPath } from '../lib/api';
 import { compressImage } from '../lib/compress';
-import { useMediaSrc } from '../lib/media';
+import { useMediaSrc, useSecureMediaSrc } from '../lib/media';
 import { canInstall, isNativeApp, isStandalone, promptInstall } from '../lib/install';
 import { useAuth } from '../lib/auth';
 import { formatDayLabel, formatTime, groupMessages, initials, newClientId, receiptLabel, sameCalendarDay } from '../lib/messages';
@@ -18,7 +18,16 @@ import {
   readOutbox,
 } from '../lib/offline';
 import { connectSocket, joinConversation } from '../lib/socket';
-import { EMOJIS } from '../lib/emojis';
+import { EMOJIS, IMX_EMOJI_CATEGORIES, QUICK_REACTIONS } from '../lib/emojis';
+import {
+  decryptMessageBody,
+  decryptMessages,
+  encryptFileBytes,
+  encryptMessageBody,
+  ensureIdentityKeys,
+  isEncryptedPayload,
+  type EncryptContext,
+} from '../lib/e2e';
 import type { ChatMessage, Conversation, PublicUser } from '../lib/types';
 import { ChatDetails } from './ChatDetails';
 import { FriendsPanel } from './FriendsPanel';
@@ -27,15 +36,6 @@ import { useWebRTC } from '../lib/useWebRTC';
 import { CallOverlay } from '../components/CallOverlay';
 import { CustomizationPanel, applySavedCustomProperties } from '../components/CustomizationPanel';
 import { SecurityPanel } from '../components/SecurityPanel';
-import {
-  decryptMessageBody,
-  decryptMessages,
-  encryptMessageBody,
-  ensureIdentityKeys,
-  isE2EEnabled,
-  isEncryptedPayload,
-  type EncryptContext,
-} from '../lib/e2e';
 
 type PresenceMap = Record<string, { isOnline: boolean; lastSeenAt?: string | null }>;
 
@@ -44,8 +44,6 @@ export function Messenger() {
   const navigate = useNavigate();
   const { conversationId } = useParams();
   const me = user!;
-
-  const webrtc = useWebRTC(me);
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [listError, setListError] = useState<string | null>(null);
@@ -169,6 +167,49 @@ export function Messenger() {
       setListLoading(false);
     }
   }, [me.id]);
+
+  const conversationsRef = useRef(conversations);
+  const conversationIdRef = useRef(conversationId);
+  const loadConversationsRef = useRef(loadConversations);
+  useEffect(() => {
+    conversationsRef.current = conversations;
+  }, [conversations]);
+  useEffect(() => {
+    conversationIdRef.current = conversationId;
+  }, [conversationId]);
+  useEffect(() => {
+    loadConversationsRef.current = loadConversations;
+  }, [loadConversations]);
+
+  const postCallNote = useCallback(
+    async (targetConversationId: string, text: string) => {
+      const clientMessageId = newClientId();
+      try {
+        const conv = conversationsRef.current.find((c) => c.id === targetConversationId);
+        const ctx: EncryptContext = {
+          userId: me.id,
+          conversationId: targetConversationId,
+          type: conv?.type ?? 'DIRECT',
+          memberIds: conv?.members.map((m) => m.id) ?? [me.id],
+        };
+        const wireBody = await encryptMessageBody(text, ctx);
+        const res = await api.sendMessage(targetConversationId, wireBody, clientMessageId);
+        if (targetConversationId === conversationIdRef.current) {
+          setMessages((curr) => [...curr, { ...res.message, body: text, clientMessageId }]);
+        }
+        void loadConversationsRef.current();
+      } catch {
+        /* best-effort call note */
+      }
+    },
+    [me.id],
+  );
+
+  const webrtc = useWebRTC(me, {
+    onCallEvent: (event) => {
+      void postCallNote(event.conversationId, event.text);
+    },
+  });
 
   const refreshQueuedCount = useCallback(() => {
     void outboxCount().then(setQueuedCount).catch(() => setQueuedCount(0));
@@ -727,10 +768,21 @@ export function Messenger() {
     setImageBusy(true);
     setChatError(null);
     try {
+      const activeConv = conversations.find((c) => c.id === conversationId);
+      const ctx: EncryptContext = {
+        userId: me.id,
+        conversationId,
+        type: activeConv?.type ?? 'DIRECT',
+        memberIds: activeConv?.members.map((m) => m.id) ?? [me.id],
+      };
       const compressed = await compressImage(file);
-      const uploaded = await api.upload(compressed);
+      const encrypted = await encryptFileBytes(ctx, await compressed.arrayBuffer());
+      const encFile = new File([encrypted], `${compressed.name || 'photo'}.imxenc`, {
+        type: 'application/octet-stream',
+      });
+      const uploaded = await api.upload(encFile);
       const clientMessageId = newClientId();
-      const attachments = [{ url: toUploadPath(uploaded.url), kind: 'image', fileName: uploaded.fileName }];
+      const attachments = [{ url: toUploadPath(uploaded.url), kind: 'image', fileName: file.name }];
       const optimistic: ChatMessage = {
         id: clientMessageId,
         clientMessageId,
@@ -741,7 +793,7 @@ export function Messenger() {
         conversationId,
         createdAt: new Date().toISOString(),
         readBy: [],
-        attachments: [{ id: clientMessageId, url: toUploadPath(uploaded.url), kind: 'image', fileName: uploaded.fileName }],
+        attachments: [{ id: clientMessageId, url: toUploadPath(uploaded.url), kind: 'image', fileName: file.name }],
       };
       setMessages((curr) => [...curr, optimistic]);
       stickToBottom.current = true;
@@ -751,7 +803,7 @@ export function Messenger() {
       );
       void loadConversations();
     } catch (err) {
-      setChatError(err instanceof ApiError ? err.message : 'Image send failed');
+      setChatError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'Image send failed');
     } finally {
       setImageBusy(false);
     }
@@ -762,9 +814,20 @@ export function Messenger() {
     setImageBusy(true);
     setChatError(null);
     try {
-      const uploaded = await api.upload(file);
+      const activeConv = conversations.find((c) => c.id === conversationId);
+      const ctx: EncryptContext = {
+        userId: me.id,
+        conversationId,
+        type: activeConv?.type ?? 'DIRECT',
+        memberIds: activeConv?.members.map((m) => m.id) ?? [me.id],
+      };
+      const encrypted = await encryptFileBytes(ctx, await file.arrayBuffer());
+      const encFile = new File([encrypted], `${file.name || 'video'}.imxenc`, {
+        type: 'application/octet-stream',
+      });
+      const uploaded = await api.upload(encFile);
       const clientMessageId = newClientId();
-      const attachments = [{ url: toUploadPath(uploaded.url), kind: 'video', fileName: uploaded.fileName, mimeType: uploaded.mimeType, size: uploaded.size }];
+      const attachments = [{ url: toUploadPath(uploaded.url), kind: 'video', fileName: file.name, mimeType: file.type, size: file.size }];
       const optimistic: ChatMessage = {
         id: clientMessageId,
         clientMessageId,
@@ -775,7 +838,7 @@ export function Messenger() {
         conversationId,
         createdAt: new Date().toISOString(),
         readBy: [],
-        attachments: [{ id: clientMessageId, url: toUploadPath(uploaded.url), kind: 'video', fileName: uploaded.fileName }],
+        attachments: [{ id: clientMessageId, url: toUploadPath(uploaded.url), kind: 'video', fileName: file.name }],
       };
       setMessages((curr) => [...curr, optimistic]);
       stickToBottom.current = true;
@@ -785,7 +848,7 @@ export function Messenger() {
       );
       void loadConversations();
     } catch (err) {
-      setChatError(err instanceof ApiError ? err.message : 'Video send failed');
+      setChatError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'Video send failed');
     } finally {
       setImageBusy(false);
     }
@@ -796,10 +859,21 @@ export function Messenger() {
     setImageBusy(true);
     setChatError(null);
     try {
-      const uploaded = await api.upload(file);
+      const activeConv = conversations.find((c) => c.id === conversationId);
+      const ctx: EncryptContext = {
+        userId: me.id,
+        conversationId,
+        type: activeConv?.type ?? 'DIRECT',
+        memberIds: activeConv?.members.map((m) => m.id) ?? [me.id],
+      };
+      const encrypted = await encryptFileBytes(ctx, await file.arrayBuffer());
+      const encFile = new File([encrypted], `${file.name || 'file'}.imxenc`, {
+        type: 'application/octet-stream',
+      });
+      const uploaded = await api.upload(encFile);
       const clientMessageId = newClientId();
       const kind = file.type.startsWith('image/') ? 'image' : file.type.startsWith('video/') ? 'video' : file.type.startsWith('audio/') ? 'audio' : 'file';
-      const attachments = [{ url: toUploadPath(uploaded.url), kind, fileName: uploaded.fileName, mimeType: uploaded.mimeType, size: uploaded.size }];
+      const attachments = [{ url: toUploadPath(uploaded.url), kind, fileName: file.name, mimeType: file.type, size: file.size }];
       const optimistic: ChatMessage = {
         id: clientMessageId,
         clientMessageId,
@@ -810,7 +884,7 @@ export function Messenger() {
         conversationId,
         createdAt: new Date().toISOString(),
         readBy: [],
-        attachments: [{ id: clientMessageId, url: toUploadPath(uploaded.url), kind, fileName: uploaded.fileName }],
+        attachments: [{ id: clientMessageId, url: toUploadPath(uploaded.url), kind, fileName: file.name }],
       };
       setMessages((curr) => [...curr, optimistic]);
       stickToBottom.current = true;
@@ -820,7 +894,7 @@ export function Messenger() {
       );
       void loadConversations();
     } catch (err) {
-      setChatError(err instanceof ApiError ? err.message : 'File send failed');
+      setChatError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'File send failed');
     } finally {
       setImageBusy(false);
     }
@@ -1032,7 +1106,18 @@ export function Messenger() {
     }
   }
 
-  const QUICK_REACTIONS = ['❤️', '👍', '😂', '😮', '🔥'];
+  const e2eCtx = useMemo<EncryptContext | null>(() => {
+    if (!conversationId) return null;
+    const activeConv = conversations.find((c) => c.id === conversationId);
+    return {
+      userId: me.id,
+      conversationId,
+      type: activeConv?.type ?? 'DIRECT',
+      memberIds: activeConv?.members.map((m) => m.id) ?? [me.id],
+    };
+  }, [conversationId, conversations, me.id]);
+
+  const QUICK_REACTIONS_LIST = QUICK_REACTIONS;
 
   async function toggleReaction(messageId: string, emoji: string) {
     if (!conversationId) return;
@@ -1461,15 +1546,26 @@ export function Messenger() {
                           ) : (
                             <>
                           {message.attachments?.filter(a => a.kind.toLowerCase().includes('image')).map(a => (
-                            <MsgImage key={a.id} url={a.url} fileName={a.fileName} onOpen={(s) => { setLightboxSrc(s); setLightboxZoom(1); lightboxPos.current = { x: 0, y: 0 }; }} />
+                            <MsgImage
+                              key={a.id}
+                              url={a.url}
+                              fileName={a.fileName}
+                              e2eCtx={e2eCtx}
+                              onOpen={(s) => { setLightboxSrc(s); setLightboxZoom(1); lightboxPos.current = { x: 0, y: 0 }; }}
+                            />
                           ))}
                           {message.attachments?.filter(a => a.kind.toLowerCase().includes('video')).map(a => (
-                            <MsgVideo key={a.id} url={a.url} fileName={a.fileName} />
+                            <MsgVideo key={a.id} url={a.url} fileName={a.fileName} e2eCtx={e2eCtx} />
                           ))}
                           {message.attachments?.filter(a => a.kind.toLowerCase().includes('audio')).map(a => (
-                            <MsgAudio key={a.id} url={a.url} />
+                            <MsgAudio key={a.id} url={a.url} e2eCtx={e2eCtx} />
                           ))}
-                          {message.body && <p>{message.body}{message.edited && <em className="edited-mark"> · edited</em>}</p>}
+                          {message.body && (
+                            <p className={message.body.startsWith('📞') ? 'call-note' : undefined}>
+                              {message.body}
+                              {message.edited && <em className="edited-mark"> · edited</em>}
+                            </p>
+                          )}
                           {!message.body && (message.attachments?.length ?? 0) === 0 && <p className="deleted">This message was deleted</p>}
                           {message.reactions && Object.keys(message.reactions).length > 0 && (
                             <div className="reactions-row">
@@ -1511,7 +1607,7 @@ export function Messenger() {
                         {reactMenuId === message.id && (
                           <div className={`react-picker ${reactAllOpen ? 'expanded' : ''} ${mine ? 'mine' : ''}`} role="dialog" aria-label="Add reaction">
                             <div className="react-quick">
-                              {QUICK_REACTIONS.map((emoji) => {
+                              {QUICK_REACTIONS_LIST.map((emoji) => {
                                 const on = message.reactions?.[emoji]?.some((u) => u.userId === me.id) ?? false;
                                 return (
                                   <button
@@ -1577,12 +1673,44 @@ export function Messenger() {
             </div>
             <div className="chat-bottom">
               {emojiOpen && (
-                <div className="emoji-grid">
-                  {EMOJIS.map((e) => (
-                    <button key={e} type="button" className="emoji-btn" onClick={() => { setDraft((d) => d + e); setEmojiOpen(false); }}>
-                      {e}
-                    </button>
-                  ))}
+                <div className="imx-emoji-picker">
+                  <div className="imx-emoji-cats" role="tablist" aria-label="IMX emoji categories">
+                    {IMX_EMOJI_CATEGORIES.map((cat) => (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        className="imx-emoji-cat"
+                        title={cat.label}
+                        onClick={() => {
+                          document.getElementById(`imx-emoji-${cat.id}`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                        }}
+                      >
+                        {cat.icon}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="imx-emoji-scroll">
+                    {IMX_EMOJI_CATEGORIES.map((cat) => (
+                      <div key={cat.id} id={`imx-emoji-${cat.id}`} className="imx-emoji-section">
+                        <p className="imx-emoji-label">{cat.label}</p>
+                        <div className="emoji-grid imx-emoji-grid">
+                          {cat.emojis.map((e) => (
+                            <button
+                              key={`${cat.id}-${e}`}
+                              type="button"
+                              className="emoji-btn"
+                              onClick={() => {
+                                setDraft((d) => d + e);
+                                setEmojiOpen(false);
+                              }}
+                            >
+                              {e}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
               {searchOpen && (
@@ -2139,8 +2267,18 @@ const Avatar = React.memo(function Avatar({ user, online }: { user: PublicUser; 
   );
 });
 
-const MsgImage = React.memo(function MsgImage({ url, fileName, onOpen }: { url: string; fileName?: string | null; onOpen?: (src: string) => void }) {
-  const src = useMediaSrc(url);
+const MsgImage = React.memo(function MsgImage({
+  url,
+  fileName,
+  onOpen,
+  e2eCtx,
+}: {
+  url: string;
+  fileName?: string | null;
+  onOpen?: (src: string) => void;
+  e2eCtx?: EncryptContext | null;
+}) {
+  const src = useSecureMediaSrc(url, e2eCtx ?? null);
   const [broken, setBroken] = useState(false);
   const [loaded, setLoaded] = useState(false);
   useEffect(() => {
@@ -2162,8 +2300,8 @@ const MsgImage = React.memo(function MsgImage({ url, fileName, onOpen }: { url: 
   );
 });
 
-const MsgAudio = React.memo(function MsgAudio({ url }: { url: string }) {
-  const src = useMediaSrc(url);
+const MsgAudio = React.memo(function MsgAudio({ url, e2eCtx }: { url: string; e2eCtx?: EncryptContext | null }) {
+  const src = useSecureMediaSrc(url, e2eCtx ?? null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
   const [current, setCurrent] = useState(0);
@@ -2246,8 +2384,16 @@ const MsgAudio = React.memo(function MsgAudio({ url }: { url: string }) {
   );
 });
 
-const MsgVideo = React.memo(function MsgVideo({ url }: { url: string; fileName?: string | null }) {
-  const src = useMediaSrc(url);
+const MsgVideo = React.memo(function MsgVideo({
+  url,
+  fileName,
+  e2eCtx,
+}: {
+  url: string;
+  fileName?: string | null;
+  e2eCtx?: EncryptContext | null;
+}) {
+  const src = useSecureMediaSrc(url, e2eCtx ?? null);
   if (!src) return <div className="msg-image-fallback">Couldn't load video</div>;
   return <video className="msg-video" src={src} controls preload="metadata" playsInline />;
 });

@@ -16,16 +16,12 @@ const PREFIX = 'imx1.';
 export type JsonWebKeyEC = JsonWebKey & { kty: 'EC'; crv: 'P-256'; x: string; y: string };
 
 export function isE2EEnabled(): boolean {
-  try {
-    const v = localStorage.getItem(ENABLED_KEY);
-    return v !== '0';
-  } catch {
-    return true;
-  }
+  // Full-app encryption: always on. Legacy '0' is ignored.
+  return true;
 }
 
-export function setE2EEnabled(on: boolean): void {
-  localStorage.setItem(ENABLED_KEY, on ? '1' : '0');
+export function setE2EEnabled(_on: boolean): void {
+  localStorage.setItem(ENABLED_KEY, '1');
 }
 
 export function isEncryptedPayload(body: string | null | undefined): boolean {
@@ -310,24 +306,61 @@ export type EncryptContext = {
   memberIds: string[];
 };
 
-/** Encrypt plaintext for a conversation. Returns plaintext if E2E off or peer has no key. */
+/** Encrypt plaintext for a conversation. Throws if keys are missing (never sends plaintext). */
 export async function encryptMessageBody(plaintext: string, ctx: EncryptContext): Promise<string> {
-  if (!isE2EEnabled() || !plaintext) return plaintext;
-  try {
-    await ensureIdentityKeys(ctx.userId);
-    let key: CryptoKey | null = null;
-    if (ctx.type === 'DIRECT') {
-      const peerId = ctx.memberIds.find((id) => id !== ctx.userId);
-      if (!peerId) return plaintext;
-      key = await getDirectAesKey(ctx.userId, ctx.conversationId, peerId);
-    } else {
-      key = await getGroupAesKey(ctx.userId, ctx.conversationId, ctx.memberIds);
-    }
-    if (!key) return plaintext;
-    return aesEncrypt(key, plaintext);
-  } catch {
-    return plaintext;
+  if (!plaintext) return plaintext;
+  await ensureIdentityKeys(ctx.userId);
+  const key = await resolveConversationKey(ctx);
+  if (!key) {
+    throw new Error('Encryption unavailable — the other person needs to open IMX once so keys can sync.');
   }
+  return aesEncrypt(key, plaintext);
+}
+
+/** Resolve the AES key for a conversation (text + file encryption). */
+export async function resolveConversationKey(ctx: EncryptContext): Promise<CryptoKey | null> {
+  await ensureIdentityKeys(ctx.userId);
+  if (ctx.type === 'DIRECT') {
+    const peerId = ctx.memberIds.find((id) => id !== ctx.userId);
+    if (!peerId) return null;
+    return getDirectAesKey(ctx.userId, ctx.conversationId, peerId);
+  }
+  return getGroupAesKey(ctx.userId, ctx.conversationId, ctx.memberIds);
+}
+
+const FILE_MAGIC = new TextEncoder().encode('IMXE1');
+
+/** Encrypt a file/blob for upload. Output is IMXE1 || iv(12) || ciphertext. */
+export async function encryptFileBytes(ctx: EncryptContext, data: ArrayBuffer): Promise<Blob> {
+  const key = await resolveConversationKey(ctx);
+  if (!key) throw new Error('Cannot encrypt attachment — missing chat keys.');
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, data));
+  const out = new Uint8Array(FILE_MAGIC.length + iv.length + ct.length);
+  out.set(FILE_MAGIC, 0);
+  out.set(iv, FILE_MAGIC.length);
+  out.set(ct, FILE_MAGIC.length + iv.length);
+  return new Blob([out], { type: 'application/octet-stream' });
+}
+
+export function isEncryptedFileBytes(data: ArrayBuffer | Uint8Array): boolean {
+  const bytes = data instanceof Uint8Array ? data : new Uint8Array(data);
+  if (bytes.length < FILE_MAGIC.length) return false;
+  for (let i = 0; i < FILE_MAGIC.length; i++) {
+    if (bytes[i] !== FILE_MAGIC[i]) return false;
+  }
+  return true;
+}
+
+/** Decrypt an uploaded IMXE1 blob back to the original bytes. */
+export async function decryptFileBytes(ctx: EncryptContext, data: ArrayBuffer): Promise<ArrayBuffer> {
+  const bytes = new Uint8Array(data);
+  if (!isEncryptedFileBytes(bytes)) return data;
+  const key = await resolveConversationKey(ctx);
+  if (!key) throw new Error('Cannot decrypt attachment');
+  const iv = bytes.slice(FILE_MAGIC.length, FILE_MAGIC.length + 12);
+  const ct = bytes.slice(FILE_MAGIC.length + 12);
+  return crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
 }
 
 /** Decrypt a message body. Leaves non-encrypted text alone. */
