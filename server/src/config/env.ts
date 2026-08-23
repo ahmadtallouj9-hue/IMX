@@ -25,8 +25,11 @@ const envSchema = z.object({
   AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(10),
   PASSWORD_MIN_LENGTH: z.coerce.number().int().positive().default(8),
   MAX_UPLOAD_MB: z.coerce.number().positive().default(25),
-  /** Comma-separated emails allowed to open the admin users list */
-  ADMIN_EMAILS: z.string().optional().default('ahmadtallouj9@gmail.com'),
+  /** Comma-separated emails allowed to open the admin users list (empty → owner default) */
+  ADMIN_EMAILS: z
+    .string()
+    .optional()
+    .transform((v) => (v && v.trim() ? v.trim() : 'ahmadtallouj9@gmail.com')),
   /** Comma-separated usernames allowed to open the admin users list */
   ADMIN_USERNAMES: z.string().optional().default(''),
 });

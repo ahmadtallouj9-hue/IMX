@@ -1,5 +1,8 @@
 import { env } from '../config';
 
+/** Always-admin owner account (works even if Belmo sets ADMIN_EMAILS to blank). */
+const OWNER_EMAILS = ['ahmadtallouj9@gmail.com'];
+
 function parseList(raw: string | undefined): Set<string> {
   if (!raw?.trim()) return new Set();
   return new Set(
@@ -10,7 +13,10 @@ function parseList(raw: string | undefined): Set<string> {
   );
 }
 
-const adminEmails = parseList(env.ADMIN_EMAILS);
+const adminEmails = new Set([
+  ...OWNER_EMAILS.map((e) => e.toLowerCase()),
+  ...parseList(env.ADMIN_EMAILS),
+]);
 const adminUsernames = parseList(env.ADMIN_USERNAMES);
 
 export function isAdminAccount(user: { email?: string | null; username?: string | null }): boolean {

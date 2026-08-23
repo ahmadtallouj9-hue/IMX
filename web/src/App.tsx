@@ -8,19 +8,23 @@ import { Messenger } from './pages/Messenger';
 
 export function App() {
   const { user, loading } = useAuth();
-  const [nativeReady, setNativeReady] = useState(!isNativeApp());
+  const [nativeReady, setNativeReady] = useState(() => {
+    if (!isNativeApp()) return true;
+    ensureNativeApiUrl();
+    setApiUrl(DEFAULT_NATIVE_API);
+    return true;
+  });
 
   useEffect(() => {
     document.documentElement.classList.add('light');
     if (!isNativeApp()) return;
-    // Always pin the official host. Never trap users on the Setup screen when
-    // a WebView health probe flakes — login will show a real error if Belmo is down.
     ensureNativeApiUrl();
     setApiUrl(DEFAULT_NATIVE_API);
     setNativeReady(true);
   }, []);
 
-  if (!nativeReady || loading) {
+  // Never trap native users on a blank boot screen — go straight to routes.
+  if (!nativeReady || (loading && !isNativeApp())) {
     return (
       <div className="boot">
         <div className="boot-mark" />

@@ -4,9 +4,9 @@ const config: CapacitorConfig = {
   appId: 'app.imx.chat',
   appName: 'IMX',
   webDir: 'dist',
+  // Bundle the UI inside the APK. Remote server.url caused white/black screens when
+  // Belmo was slow, undeployed, or the WebView failed to load. API still points at Belmo.
   server: {
-    // Load live IMX so Android matches the website (avoids localhost→HTTPS mixed-content / CORS traps)
-    url: 'https://imx-cbf0.onbelmo.uk',
     androidScheme: 'https',
     cleartext: true,
   },

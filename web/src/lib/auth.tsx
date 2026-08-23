@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { api, clearTokens, setTokens } from './api';
+import { api, clearTokens, getAccessToken, setTokens } from './api';
 import { connectSocket, disconnectSocket } from './socket';
 import type { PublicUser } from './types';
 
@@ -14,15 +14,22 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+function hasStoredSession(): boolean {
+  try {
+    return Boolean(getAccessToken() || localStorage.getItem('cove.refreshToken'));
+  } catch {
+    return false;
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<PublicUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Start unlocked when logged out so the login screen paints immediately (esp. bundled APK).
+  const [loading, setLoading] = useState(() => hasStoredSession());
 
   useEffect(() => {
     let cancelled = false;
-    // No token → show login immediately (avoids black/empty boot while /auth/me hangs).
-    const hasToken = Boolean(localStorage.getItem('cove.accessToken') || localStorage.getItem('cove.refreshToken'));
-    if (!hasToken) {
+    if (!hasStoredSession()) {
       setLoading(false);
       return;
     }
@@ -30,7 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const boot = Promise.race([
       api.me(),
       new Promise<never>((_, reject) => {
-        window.setTimeout(() => reject(new Error('boot-timeout')), 2500);
+        window.setTimeout(() => reject(new Error('boot-timeout')), 2000);
       }),
     ]);
 
