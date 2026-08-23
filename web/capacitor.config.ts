@@ -5,7 +5,9 @@ const config: CapacitorConfig = {
   appName: 'IMX',
   webDir: 'dist',
   server: {
-    androidScheme: 'http',
+    // Load live IMX so Android matches the website (avoids localhost→HTTPS mixed-content / CORS traps)
+    url: 'https://imx-cbf0.onbelmo.uk',
+    androidScheme: 'https',
     cleartext: true,
   },
   android: {

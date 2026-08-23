@@ -6,7 +6,7 @@ import { AuthProvider } from './lib/auth';
 import { listenForInstall } from './lib/install';
 import './styles.css';
 
-const BUILD_ID = 'ui-v6-calls-fix';
+const BUILD_ID = 'ui-v6-android-live';
 
 listenForInstall();
 void import('@capacitor/app').then(({ App }) => {
