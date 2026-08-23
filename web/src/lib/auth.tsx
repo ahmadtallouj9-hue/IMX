@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api, clearTokens, getAccessToken, setTokens } from './api';
+import { cacheUser, clearCachedUser, isOnline, readCachedUser } from './offline';
 import { connectSocket, disconnectSocket } from './socket';
 import type { PublicUser } from './types';
 
@@ -42,16 +43,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ]);
 
     boot
-      .then((res) => {
+      .then(async (res) => {
         if (cancelled) return;
         setUser(res.user);
+        await cacheUser(res.user);
         connectSocket();
       })
-      .catch(() => {
-        if (!cancelled) {
-          clearTokens();
-          setUser(null);
+      .catch(async () => {
+        if (cancelled) return;
+        // Stay signed in offline using the last cached profile.
+        if (!isOnline()) {
+          const cached = await readCachedUser();
+          if (cached) {
+            setUser(cached);
+            return;
+          }
         }
+        clearTokens();
+        void clearCachedUser();
+        setUser(null);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -70,12 +80,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const res = await api.login(identifier, password);
         setTokens(res.tokens.accessToken, res.tokens.refreshToken);
         setUser(res.user);
+        await cacheUser(res.user);
         connectSocket();
       },
       async register(payload) {
         const res = await api.register(payload);
         setTokens(res.tokens.accessToken, res.tokens.refreshToken);
         setUser(res.user);
+        await cacheUser(res.user);
         connectSocket();
       },
       async logout() {
@@ -86,6 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         disconnectSocket();
         clearTokens();
+        void clearCachedUser();
         setUser(null);
       },
     }),

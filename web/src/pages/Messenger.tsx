@@ -6,6 +6,17 @@ import { useMediaSrc } from '../lib/media';
 import { canInstall, isNativeApp, isStandalone, promptInstall } from '../lib/install';
 import { useAuth } from '../lib/auth';
 import { formatDayLabel, formatTime, groupMessages, initials, newClientId, receiptLabel, sameCalendarDay } from '../lib/messages';
+import {
+  cacheConversations,
+  cacheMessages,
+  dequeueOutbox,
+  enqueueOutbox,
+  isOnline,
+  outboxCount,
+  readCachedConversations,
+  readCachedMessages,
+  readOutbox,
+} from '../lib/offline';
 import { connectSocket, joinConversation } from '../lib/socket';
 import { EMOJIS } from '../lib/emojis';
 import type { ChatMessage, Conversation, PublicUser } from '../lib/types';
@@ -41,6 +52,8 @@ export function Messenger() {
   const [typing, setTyping] = useState<Record<string, string>>({});
   const [presence, setPresence] = useState<PresenceMap>({});
   const [connected, setConnected] = useState(false);
+  const [online, setOnline] = useState(() => isOnline());
+  const [queuedCount, setQueuedCount] = useState(0);
   const [profileOpen, setProfileOpen] = useState(false);
   const [viewedUser, setViewedUser] = useState<PublicUser | null>(null);
   const [groupOpen, setGroupOpen] = useState(false);
@@ -121,17 +134,74 @@ export function Messenger() {
       const res = await api.conversations();
       setConversations(res.conversations);
       setListError(null);
+      void cacheConversations(res.conversations);
     } catch (err) {
-      setListError(err instanceof ApiError ? err.message : 'Could not load conversations');
+      const cached = await readCachedConversations();
+      if (cached?.length) {
+        setConversations(cached);
+        setListError(isOnline() ? null : 'Offline — showing saved chats');
+      } else {
+        setListError(err instanceof ApiError ? err.message : 'Could not load conversations');
+      }
     } finally {
       setListLoading(false);
     }
   }, []);
 
+  const refreshQueuedCount = useCallback(() => {
+    void outboxCount().then(setQueuedCount).catch(() => setQueuedCount(0));
+  }, []);
+
+  const flushOutbox = useCallback(async () => {
+    if (!isOnline()) return;
+    const pending = await readOutbox();
+    for (const item of pending) {
+      try {
+        const res = await api.sendMessage(
+          item.conversationId,
+          item.body,
+          item.clientMessageId,
+          undefined,
+          item.replyToId ?? null,
+        );
+        await dequeueOutbox(item.id);
+        if (item.conversationId === conversationId) {
+          setMessages((curr) =>
+            curr.map((m) =>
+              m.clientMessageId === item.clientMessageId
+                ? { ...res.message, clientMessageId: item.clientMessageId }
+                : m,
+            ),
+          );
+        }
+      } catch {
+        // Keep in outbox; retry on next online event
+        break;
+      }
+    }
+    refreshQueuedCount();
+    if (pending.length) void loadConversations();
+  }, [conversationId, loadConversations, refreshQueuedCount]);
+
   useEffect(() => {
     void loadConversations();
-  }, [loadConversations]);
+    refreshQueuedCount();
+  }, [loadConversations, refreshQueuedCount]);
 
+  useEffect(() => {
+    const onOnline = () => {
+      setOnline(true);
+      void flushOutbox();
+      void loadConversations();
+    };
+    const onOffline = () => setOnline(false);
+    window.addEventListener('online', onOnline);
+    window.addEventListener('offline', onOffline);
+    return () => {
+      window.removeEventListener('online', onOnline);
+      window.removeEventListener('offline', onOffline);
+    };
+  }, [flushOutbox, loadConversations]);
   useEffect(() => {
     void api.unreadNotificationCount().then((r) => setNotifCount(r.count)).catch(() => {});
     try { if (typeof Notification !== 'undefined' && Notification.permission === 'default') Notification.requestPermission(); } catch { /* unsupported */ }
@@ -182,7 +252,10 @@ export function Messenger() {
 
   useEffect(() => {
     const socket = connectSocket();
-    const onConnect = () => setConnected(true);
+    const onConnect = () => {
+      setConnected(true);
+      void flushOutbox();
+    };
     const onDisconnect = () => setConnected(false);
     const onMessage = (payload: ChatMessage) => {
       setMessages((curr) => {
@@ -363,15 +436,25 @@ export function Messenger() {
     api
       .messages(conversationId)
       .then((res) => {
-        setMessages(res.messages.slice().reverse());
+        const chronological = res.messages.slice().reverse();
+        setMessages(chronological);
         setNextCursor(res.nextCursor);
         setHasMore(res.hasMore);
+        void cacheMessages(conversationId, chronological);
         return api.markRead(conversationId);
       })
       .then(() => {
         setConversations((curr) => curr.map((c) => (c.id === conversationId ? { ...c, unreadCount: 0 } : c)));
       })
-      .catch((err) => setChatError(err instanceof ApiError ? err.message : 'Could not load messages'))
+      .catch(async (err) => {
+        const cached = await readCachedMessages(conversationId);
+        if (cached?.length) {
+          setMessages(cached);
+          setChatError(isOnline() ? null : 'Offline — showing saved messages');
+        } else {
+          setChatError(err instanceof ApiError ? err.message : 'Could not load messages');
+        }
+      })
       .finally(() => setChatLoading(false));
   }, [conversationId]);
 
@@ -471,6 +554,25 @@ export function Messenger() {
     stickToBottom.current = true;
     connectSocket().emit('typing:stop', { conversationId });
     joinConversation(conversationId);
+
+    if (!isOnline()) {
+      setMessages((curr) =>
+        curr.map((m) => (m.clientMessageId === clientMessageId ? { ...m, status: 'QUEUED' } : m)),
+      );
+      await enqueueOutbox({
+        id: clientMessageId,
+        conversationId,
+        body,
+        clientMessageId,
+        replyToId: replyTo?.id ?? null,
+        createdAt: optimistic.createdAt,
+      });
+      setReplyTo(null);
+      refreshQueuedCount();
+      setSending(false);
+      return;
+    }
+
     try {
       const res = await api.sendMessage(conversationId, body, clientMessageId, undefined, replyTo?.id ?? null);
       setMessages((curr) =>
@@ -479,9 +581,27 @@ export function Messenger() {
       setReplyTo(null);
       void loadConversations();
     } catch (err) {
-      setMessages((curr) => curr.filter((m) => m.clientMessageId !== clientMessageId));
-      setDraft(body);
-      setChatError(err instanceof ApiError ? err.message : 'Message failed');
+      const networkFail = !(err instanceof ApiError);
+      if (networkFail) {
+        setMessages((curr) =>
+          curr.map((m) => (m.clientMessageId === clientMessageId ? { ...m, status: 'QUEUED' } : m)),
+        );
+        await enqueueOutbox({
+          id: clientMessageId,
+          conversationId,
+          body,
+          clientMessageId,
+          replyToId: replyTo?.id ?? null,
+          createdAt: optimistic.createdAt,
+        });
+        setReplyTo(null);
+        refreshQueuedCount();
+        setChatError('Offline — message queued');
+      } else {
+        setMessages((curr) => curr.filter((m) => m.clientMessageId !== clientMessageId));
+        setDraft(body);
+        setChatError(err.message);
+      }
     } finally {
       setSending(false);
     }
@@ -956,7 +1076,15 @@ export function Messenger() {
             aria-label="Search"
           />
         </div>
-        {!connected && <div className="banner warn">Reconnecting…</div>}
+        {!online && (
+          <div className="banner warn">
+            Offline{queuedCount > 0 ? ` — ${queuedCount} message${queuedCount === 1 ? '' : 's'} waiting to send` : ' — you can still read saved chats'}
+          </div>
+        )}
+        {online && !connected && <div className="banner warn">Reconnecting…</div>}
+        {online && connected && queuedCount > 0 && (
+          <div className="banner warn">Sending {queuedCount} queued message{queuedCount === 1 ? '' : 's'}…</div>
+        )}
         {listError && <div className="banner error">{listError}</div>}
         {people.length > 0 && (
           <div className="people">

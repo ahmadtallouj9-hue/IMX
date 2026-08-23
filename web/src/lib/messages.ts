@@ -69,6 +69,7 @@ export function initials(name: string): string {
 
 export function receiptLabel(message: ChatMessage, myId: string): string | null {
   if (message.sender.id !== myId) return null;
+  if (message.status === 'QUEUED') return 'Queued';
   if (message.readBy.some((r) => r.userId !== myId) || message.status === 'READ') return 'Read';
   if (message.status === 'DELIVERED') return 'Delivered';
   return 'Sent';
