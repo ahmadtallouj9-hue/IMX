@@ -578,8 +578,12 @@ html:not(.light) .main[data-theme="chatter"], html:not(.light) .main[data-theme=
 .messages {
   flex: 1; min-height: 0; overflow: auto; padding: 28px 36px 18px;
   display: flex; flex-direction: column; gap: 6px;
-  background:
-    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--text) 6%, transparent) 1px, transparent 0) 0 0 / 20px 20px;
+  background-color: transparent;
+  background-image: var(
+    --chat-wallpaper,
+    radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--text) 6%, transparent) 1px, transparent 0)
+  );
+  background-size: var(--chat-wallpaper-size, 20px 20px);
 }
 .day-sep { display: flex; justify-content: center; margin: 12px 0; position: sticky; top: 4px; z-index: 1; }
 .day-sep span {
@@ -588,7 +592,7 @@ html:not(.light) .main[data-theme="chatter"], html:not(.light) .main[data-theme=
   border: 1px solid var(--line-soft); padding: 5px 12px; border-radius: var(--r-pill);
 }
 
-.bundle { display: flex; gap: 8px; max-width: 62%; animation: msgIn var(--dur-slow) var(--ease); }
+.bundle { display: flex; gap: 8px; max-width: var(--bubble-max, 62%); animation: msgIn var(--dur-slow) var(--ease); }
 .bundle.mine { margin-left: auto; flex-direction: row-reverse; }
 .stack { display: grid; gap: 4px; min-width: 0; }
 
@@ -1156,8 +1160,88 @@ html.light .profile-hero {
 .logo-preview { width: 56px; height: 56px; border-radius: 14px; display: grid; place-items: center; flex-shrink: 0; border: 1px solid var(--line); background: var(--accent); color: #fff; font-weight: 800; }
 .emoji-logo-grid { display: flex; gap: 8px; flex-wrap: wrap; }
 .emoji-logo-btn { width: 48px; height: 48px; font-size: 1.5rem; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); display: grid; place-items: center; }
-.select-input { padding: 8px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); }
+.select-input { padding: 8px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--text); width: 100%; }
 .confirm-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.logo-actions { display: grid; gap: 8px; justify-items: start; }
+.chip-field { display: grid; gap: 8px; }
+.chip-label { font-size: 0.85rem; color: var(--muted); }
+.chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  border: 1px solid var(--line); background: var(--surface); color: var(--text);
+  border-radius: 999px; padding: 8px 14px; min-height: 36px; font-weight: 650; font-size: 0.82rem;
+}
+.chip.active { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+.toggle-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface);
+}
+.toggle-row strong { display: block; font-size: 0.9rem; }
+.toggle-row .hint { display: block; margin-top: 2px; }
+.toggle-row input { width: auto; accent-color: var(--accent); margin: 0; }
+.wallpaper-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.wallpaper-tile {
+  min-height: 64px; border-radius: 14px; border: 1px solid var(--line);
+  background-color: var(--bg-2); color: var(--text); font-size: 0.75rem; font-weight: 700;
+  display: grid; place-items: end start; padding: 8px; text-align: left;
+}
+.wallpaper-tile.active { box-shadow: 0 0 0 2px var(--accent); }
+
+/* Applied customization: layout chrome */
+.chat-head { min-height: var(--header-h); }
+.composer { min-height: var(--composer-h); }
+
+html[data-bubble="soft"] .bubble { border-radius: 28px; }
+html[data-bubble="soft"] .bundle.mine .bubble { border-radius: 28px; }
+html[data-bubble="square"] .bubble { border-radius: 8px; }
+html[data-bubble="square"] .bundle.mine .bubble { border-radius: 8px; }
+html[data-bubble="pill"] .bubble { border-radius: 999px; padding-inline: 18px; }
+html[data-bubble="pill"] .bundle.mine .bubble { border-radius: 999px; }
+html[data-bubble="tail"] .bubble { border-radius: 22px 22px 22px 8px; }
+html[data-bubble="tail"] .bundle.mine .bubble { border-radius: 22px 22px 8px 22px; }
+
+html[data-density="compact"] .messages { padding: 16px 18px 12px; gap: 3px; }
+html[data-density="compact"] .bubble { padding: 7px 11px; font-size: 0.9rem; }
+html[data-density="compact"] .stack { gap: 2px; }
+html[data-density="roomy"] .messages { padding: 36px 44px 24px; gap: 10px; }
+html[data-density="roomy"] .bubble { padding: 14px 18px; font-size: 1rem; }
+html[data-density="roomy"] .stack { gap: 8px; }
+
+html.bubble-shadow-off .bubble { box-shadow: none; }
+html.hide-timestamps .stamp,
+html.hide-timestamps .msg-stamp,
+html.hide-timestamps .receipt-line,
+html.hide-timestamps .meta-time { display: none !important; }
+html.hide-avatars .bundle > .avatar { display: none !important; }
+html.hide-sender-names .who { display: none !important; }
+html.compact-composer .composer,
+html.compact-composer .chat-bottom { padding-top: 6px; padding-bottom: 6px; }
+html.compact-composer .composer { min-height: 48px; gap: 6px; }
+html.msg-anim-off .bundle { animation: none !important; }
+html[data-motion="reduced"] *,
+html[data-motion="reduced"] *::before,
+html[data-motion="reduced"] *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}
+
+html[data-btn="soft"] .btn.primary {
+  background: var(--accent-soft); color: var(--accent);
+}
+html[data-btn="soft"] .btn.primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 22%, var(--surface)); color: var(--accent);
+}
+html[data-btn="outline"] .btn.primary {
+  background: transparent; color: var(--accent); border: 1.5px solid var(--accent);
+}
+html[data-btn="outline"] .btn.primary:hover:not(:disabled) {
+  background: var(--accent-soft);
+}
+
+.logo-mark.has-logo,
+.boot-mark.has-logo {
+  background-color: transparent !important;
+}
 
 /* Friends panel */
 .friends-sheet {

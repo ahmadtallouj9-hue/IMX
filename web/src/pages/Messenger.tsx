@@ -25,7 +25,7 @@ import { FriendsPanel } from './FriendsPanel';
 import { AdminPanel } from './AdminPanel';
 import { useWebRTC } from '../lib/useWebRTC';
 import { CallOverlay } from '../components/CallOverlay';
-import { CustomizationPanel, applySavedCustomProperties, clearCustomProperties } from '../components/CustomizationPanel';
+import { CustomizationPanel, applySavedCustomProperties } from '../components/CustomizationPanel';
 
 type PresenceMap = Record<string, { isOnline: boolean; lastSeenAt?: string | null }>;
 
@@ -109,12 +109,11 @@ export function Messenger() {
   useEffect(() => {
     document.documentElement.classList.toggle('light', lightMode);
     localStorage.setItem('imx.light', lightMode ? '1' : '0');
-    if (lightMode) clearCustomProperties();
-    else applySavedCustomProperties();
+    // Keep user customization in both light and dark — only re-apply after mode flip.
+    applySavedCustomProperties();
   }, [lightMode]);
 
   useEffect(() => {
-    if (localStorage.getItem('imx.light') === '1') return;
     applySavedCustomProperties();
   }, []);
 

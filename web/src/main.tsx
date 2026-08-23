@@ -4,15 +4,21 @@ import { BrowserRouter } from 'react-router-dom';
 import { App } from './App';
 import { AuthProvider } from './lib/auth';
 import { isNativeApp, listenForInstall } from './lib/install';
+import { applySavedCustomProperties } from './lib/customTheme';
 import './styles.css';
 
-const BUILD_ID = 'ui-v6-bugfix';
+const BUILD_ID = 'ui-v7-custom-full';
 
 // Always start light so auth/boot never renders as a blank black screen on phones
 // that previously saved dark mode (html:not(.light) uses near-black --bg).
 document.documentElement.classList.add('light');
 if (localStorage.getItem('imx.light') === '0' && isNativeApp()) {
   localStorage.setItem('imx.light', '1');
+}
+try {
+  applySavedCustomProperties();
+} catch {
+  /* ignore */
 }
 
 listenForInstall();
