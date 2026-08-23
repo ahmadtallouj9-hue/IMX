@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { api, ApiError, getApiUrl, setApiUrl, toUploadPath } from '../lib/api';
 import { compressImage } from '../lib/compress';
 import { useMediaSrc } from '../lib/media';
-import { canInstall, isStandalone, promptInstall } from '../lib/install';
+import { canInstall, isNativeApp, isStandalone, promptInstall } from '../lib/install';
 import { useAuth } from '../lib/auth';
 import { formatDayLabel, formatTime, groupMessages, initials, newClientId, receiptLabel, sameCalendarDay } from '../lib/messages';
 import { connectSocket, joinConversation } from '../lib/socket';
@@ -78,6 +78,11 @@ export function Messenger() {
     if (localStorage.getItem('imx.ui.ver') !== ver) {
       localStorage.removeItem('imx_custom');
       localStorage.setItem('imx.ui.ver', ver);
+      localStorage.setItem('imx.light', '1');
+      return true;
+    }
+    // Native: always prefer light so phones don't reopen into a black void
+    if (isNativeApp()) {
       localStorage.setItem('imx.light', '1');
       return true;
     }

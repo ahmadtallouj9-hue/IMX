@@ -6,7 +6,14 @@ import { AuthProvider } from './lib/auth';
 import { isNativeApp, listenForInstall } from './lib/install';
 import './styles.css';
 
-const BUILD_ID = 'ui-v6-apk-white-fix';
+const BUILD_ID = 'ui-v6-apk-black-fix-2';
+
+// Always start light so auth/boot never renders as a blank black screen on phones
+// that previously saved dark mode (html:not(.light) uses near-black --bg).
+document.documentElement.classList.add('light');
+if (localStorage.getItem('imx.light') === '0' && isNativeApp()) {
+  localStorage.setItem('imx.light', '1');
+}
 
 listenForInstall();
 void import('@capacitor/app').then(({ App }) => {

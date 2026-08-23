@@ -20,10 +20,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
+    // No token → show login immediately (avoids black/empty boot while /auth/me hangs).
+    const hasToken = Boolean(localStorage.getItem('cove.accessToken') || localStorage.getItem('cove.refreshToken'));
+    if (!hasToken) {
+      setLoading(false);
+      return;
+    }
+
     const boot = Promise.race([
       api.me(),
       new Promise<never>((_, reject) => {
-        window.setTimeout(() => reject(new Error('boot-timeout')), 4000);
+        window.setTimeout(() => reject(new Error('boot-timeout')), 2500);
       }),
     ]);
 

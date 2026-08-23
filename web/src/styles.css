@@ -178,7 +178,12 @@ button:focus:not(:focus-visible), input:focus:not(:focus-visible) { outline: non
 }
 
 .boot, .empty { display: grid; place-items: center; gap: var(--s-3); color: var(--muted); text-align: center; padding: var(--s-7); }
-.boot { height: 100%; }
+.boot {
+  height: 100%;
+  /* Hard light boot so native never shows a pure-black frame before CSS vars apply */
+  background: #d7dde6;
+  color: #5b6778;
+}
 .empty.center { flex: 1; place-content: center; }
 .empty-icon {
   width: 64px; height: 64px; border-radius: 22px; display: grid; place-items: center;

@@ -20,6 +20,10 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
 
   useEffect(() => onInstallAvailable(() => setInstallable(true)), []);
 
+  useEffect(() => {
+    document.documentElement.classList.add('light');
+  }, []);
+
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setError(null);

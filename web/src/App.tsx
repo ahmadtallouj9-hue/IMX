@@ -11,6 +11,7 @@ export function App() {
   const [nativeReady, setNativeReady] = useState(!isNativeApp());
 
   useEffect(() => {
+    document.documentElement.classList.add('light');
     if (!isNativeApp()) return;
     // Always pin the official host. Never trap users on the Setup screen when
     // a WebView health probe flakes — login will show a real error if Belmo is down.
