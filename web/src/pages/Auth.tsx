@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useId, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../lib/auth';
-import { ApiError } from '../lib/api';
+import { ApiError, ensureNativeApiUrl } from '../lib/api';
 import { canInstall, isStandalone, onInstallAvailable, promptInstall } from '../lib/install';
 
 export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
@@ -29,6 +29,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
     setError(null);
     setBusy(true);
     try {
+      ensureNativeApiUrl();
       if (mode === 'login') {
         await login(identifier.trim(), password);
       } else {

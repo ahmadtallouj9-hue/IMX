@@ -25,7 +25,21 @@ function isLocalApiUrl(url: string): boolean {
 
 function isNativePlatform(): boolean {
   try {
-    return Boolean((globalThis as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.());
+    const cap = (globalThis as { Capacitor?: {
+      isNativePlatform?: () => boolean;
+      getPlatform?: () => string;
+    } }).Capacitor;
+    if (cap?.isNativePlatform?.()) return true;
+    const platform = cap?.getPlatform?.();
+    if (platform === 'android' || platform === 'ios') return true;
+    // Bundled Capacitor WebViews use https://localhost (no port). Vite uses :5173.
+    if (typeof window !== 'undefined') {
+      const { hostname, port, protocol } = window.location;
+      const localHost = /^(localhost|127\.0\.0\.1)$/i.test(hostname);
+      if (localHost && !port && protocol === 'https:') return true;
+      if (cap && localHost) return true;
+    }
+    return false;
   } catch {
     return false;
   }
@@ -35,37 +49,35 @@ function isNativePlatform(): boolean {
 export function ensureNativeApiUrl(): string {
   if (!isNativePlatform()) return getApiUrl();
   try {
-    const stored = globalThis.localStorage?.getItem(API_KEY)?.replace(/\/$/, '') ?? '';
-    if (!stored || isLocalApiUrl(stored)) {
-      globalThis.localStorage?.setItem(API_KEY, DEFAULT_NATIVE_API);
-      return DEFAULT_NATIVE_API;
-    }
-    return stored;
+    globalThis.localStorage?.setItem(API_KEY, DEFAULT_NATIVE_API);
   } catch {
-    return DEFAULT_NATIVE_API;
+    /* ignore */
   }
+  return DEFAULT_NATIVE_API;
 }
 
 export function getApiUrl(): string {
+  if (isNativePlatform()) {
+    try {
+      const stored = globalThis.localStorage?.getItem(API_KEY)?.replace(/\/$/, '') ?? '';
+      if (stored && !isLocalApiUrl(stored)) return stored;
+      globalThis.localStorage?.setItem(API_KEY, DEFAULT_NATIVE_API);
+    } catch {
+      /* ignore */
+    }
+    return DEFAULT_NATIVE_API;
+  }
   try {
     const stored = globalThis.localStorage?.getItem(API_KEY);
     if (stored) {
       const cleaned = stored.replace(/\/$/, '');
       // Web: never call a private/LAN API — that hangs on "Opening IMX…"
-      if (!isNativePlatform() && isLocalApiUrl(cleaned)) {
+      if (isLocalApiUrl(cleaned)) {
         try {
           globalThis.localStorage?.removeItem(API_KEY);
         } catch {
           /* ignore */
         }
-      } else if (isNativePlatform() && isLocalApiUrl(cleaned)) {
-        // Native production app: migrate off old Wi‑Fi/dev server URLs
-        try {
-          globalThis.localStorage?.setItem(API_KEY, DEFAULT_NATIVE_API);
-        } catch {
-          /* ignore */
-        }
-        return DEFAULT_NATIVE_API;
       } else {
         return cleaned;
       }
@@ -75,7 +87,6 @@ export function getApiUrl(): string {
   }
   const fromEnv = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '');
   if (fromEnv) return fromEnv;
-  if (isNativePlatform()) return DEFAULT_NATIVE_API;
   return '';
 }
 
@@ -148,6 +159,12 @@ async function refreshAccessToken(): Promise<string | null> {
 export { refreshAccessToken };
 
 export async function request<T>(path: string, init: RequestInit = {}, retry = true): Promise<T> {
+  if (isNativePlatform()) ensureNativeApiUrl();
+  const base = getApiUrl();
+  if (!base && isNativePlatform()) {
+    throw new ApiError(0, 'App is not connected to IMX. Reinstall the latest APK.');
+  }
+
   const headers = new Headers(init.headers);
   if (!(init.body instanceof FormData) && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
@@ -155,7 +172,26 @@ export async function request<T>(path: string, init: RequestInit = {}, retry = t
   const token = getAccessToken();
   if (token) headers.set('Authorization', `Bearer ${token}`);
 
-  const res = await fetch(`${getApiUrl()}${path}`, { ...init, headers });
+  const controller = new AbortController();
+  const timeoutMs = path.startsWith('/auth/') ? 12000 : 20000;
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+  // Preserve caller signal if present
+  const onAbort = () => controller.abort();
+  init.signal?.addEventListener('abort', onAbort);
+
+  let res: Response;
+  try {
+    res = await fetch(`${base}${path}`, { ...init, headers, signal: controller.signal });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new ApiError(408, 'Server took too long. Check your connection and try again.');
+    }
+    throw new ApiError(0, 'Could not reach IMX. Check your internet and try again.');
+  } finally {
+    window.clearTimeout(timer);
+    init.signal?.removeEventListener('abort', onAbort);
+  }
+
   if (res.status === 401 && retry && localStorage.getItem(REFRESH_KEY)) {
     const next = await refreshAccessToken();
     if (next) return request<T>(path, init, false);

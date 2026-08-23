@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { api, clearTokens, getAccessToken, setTokens } from './api';
+import { api, clearTokens, ensureNativeApiUrl, getAccessToken, setTokens } from './api';
 import { cacheUser, clearCachedUser, isOnline, readCachedUser } from './offline';
 import { connectSocket, disconnectSocket } from './socket';
 import type { PublicUser } from './types';
@@ -77,17 +77,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       setUser,
       async login(identifier, password) {
+        ensureNativeApiUrl();
         const res = await api.login(identifier, password);
         setTokens(res.tokens.accessToken, res.tokens.refreshToken);
         setUser(res.user);
-        await cacheUser(res.user);
+        void cacheUser(res.user);
         connectSocket();
       },
       async register(payload) {
+        ensureNativeApiUrl();
         const res = await api.register(payload);
         setTokens(res.tokens.accessToken, res.tokens.refreshToken);
         setUser(res.user);
-        await cacheUser(res.user);
+        void cacheUser(res.user);
         connectSocket();
       },
       async logout() {
